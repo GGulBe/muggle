@@ -50,7 +50,7 @@ export function LoginScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.inner}>
-        <ThemedText type="subtitle">어디서 만나?</ThemedText>
+        <ThemedText type="subtitle">muggle</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
           출발지와 가능한 날짜만 입력하면{'\n'}모두에게 공평한 약속 장소를 추천해요
         </ThemedText>

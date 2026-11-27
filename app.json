@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "meetup-app",
-    "slug": "meetup-app",
+    "name": "muggle",
+    "slug": "muggle",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "meetupapp",
+    "scheme": "muggle",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"

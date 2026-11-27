@@ -35,7 +35,7 @@ npx supabase functions deploy recommend
 2. 같은 화면에서 **Allow users without an email** 켜기
 3. Authentication > URL Configuration > Redirect URLs에 추가
    - `exp://**` (Expo Go 개발용)
-   - `meetupapp://**` (빌드한 앱용, app.json의 scheme)
+   - `muggle://**` (빌드한 앱용, app.json의 scheme)
 
 ## 5. 앱 실행
 ```bash
