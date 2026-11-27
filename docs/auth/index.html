@@ -22,10 +22,15 @@
     var to = new URLSearchParams(location.search).get('to') || '';
     // 토큰은 우리 앱 주소(muggle://, 개발 중 exp://)로만 전달
     // ponytail: exp://는 개발용. 출시 빌드에서는 muggle://만 허용하도록 정규식을 좁힐 것
-    var ok = /^(muggle|exp):\/\//.test(to) && to.indexOf('#') === -1;
+    var m = /^(muggle|exp):\/\/([^#]*)$/.exec(to);
     var go = document.getElementById('go');
-    if (ok) {
-      go.href = to + location.hash;
+    if (m) {
+      var tokens = location.hash.slice(1);
+      // 안드로이드 Custom Tab은 exp:// 같은 앱 주소 링크를 무시해서, 크롬 전용 intent:// 형식으로 연다.
+      // intent://는 # 뒤를 설정으로 쓰므로 토큰은 ?query로 옮긴다 (앱은 query·fragment 둘 다 읽음)
+      go.href = /Android/i.test(navigator.userAgent)
+        ? 'intent://' + m[2] + (m[2].indexOf('?') === -1 ? '?' : '&') + tokens + '#Intent;scheme=' + m[1] + ';end'
+        : to + '#' + tokens;
       location.replace(go.href);
     } else {
       document.getElementById('msg').textContent = '잘못된 접근입니다.';
