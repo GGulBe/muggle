@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { Neo, Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDay, localDate, SLOT_LABEL, SLOTS, type Slot } from '@/lib/party';
 import { supabase } from '@/lib/supabase';
@@ -121,13 +121,13 @@ export default function DatesScreen() {
                 accessibilityState={{ selected: focused, disabled: past }}
                 accessibilityLabel={`${formatDay(day)}${on.length ? `, ${on.map((s) => SLOT_LABEL[s]).join('·')} 가능` : ''}`}
                 onPress={() => setFocus(day)}
-                style={[styles.cell, styles.day, on.length > 0 && { backgroundColor: Palette.glacierSoft }, focused && { borderColor: Palette.ink }]}>
+                style={[styles.cell, styles.day, on.length > 0 && { backgroundColor: Palette.glacier }, focused && styles.focused]}>
                 <ThemedText type="small" style={[past && { opacity: 0.3 }, i % 7 === 0 && styles.sun]}>
                   {Number(day.slice(8))}
                 </ThemedText>
                 <View style={styles.dots}>
                   {SLOTS.map((s) => (
-                    <View key={s} style={[styles.dot, { backgroundColor: picked.has(key(day, s)) ? Palette.glacierDeep : 'transparent' }]} />
+                    <View key={s} style={[styles.dot, { backgroundColor: picked.has(key(day, s)) ? Palette.ink : 'transparent' }]} />
                   ))}
                 </View>
               </Pressable>
@@ -135,7 +135,7 @@ export default function DatesScreen() {
           })}
         </View>
 
-        <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+        <View style={styles.card}>
           <View style={styles.cardHead}>
             <ThemedText type="smallBold">{formatDay(focus)}</ThemedText>
             <Pressable accessibilityRole="button" onPress={() => toggleAllDay(focus)}>
@@ -154,8 +154,8 @@ export default function DatesScreen() {
                   accessibilityState={{ checked: on }}
                   accessibilityLabel={`${formatDay(focus)} ${SLOT_LABEL[slot]}`}
                   onPress={() => toggle(key(focus, slot))}
-                  style={[styles.slot, { borderColor: on ? Palette.glacier : Palette.line, backgroundColor: on ? Palette.glacier : Palette.white }]}>
-                  <ThemedText style={{ color: theme.text, fontWeight: on ? '600' : '400' }}>{SLOT_LABEL[slot]}</ThemedText>
+                  style={({ pressed }) => [styles.slot, on ? Neo.on : Neo.off, pressed && Neo.pressedSm]}>
+                  <ThemedText style={{ color: theme.text, fontWeight: on ? '800' : '500' }}>{SLOT_LABEL[slot]}</ThemedText>
                 </Pressable>
               );
             })}
@@ -182,9 +182,10 @@ const styles = StyleSheet.create({
   day: { height: 52, justifyContent: 'center', gap: 4, borderRadius: Radius.control, borderWidth: 1.5, borderColor: 'transparent' },
   dots: { flexDirection: 'row', gap: 4 },
   dot: { width: 4, height: 4, borderRadius: 2 },
-  card: { borderRadius: Radius.card, padding: Spacing.threeHalf, gap: Spacing.twoHalf },
+  card: { ...Neo.box, ...Neo.shadow, backgroundColor: Palette.glacierSoft, padding: Spacing.threeHalf, gap: Spacing.twoHalf, marginRight: 4 },
+  focused: { borderColor: Palette.ink, borderWidth: 2 },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   slots: { flexDirection: 'row', gap: Spacing.two },
-  slot: { flex: 1, height: 48, borderWidth: 1, borderRadius: Radius.control, alignItems: 'center', justifyContent: 'center' },
+  slot: { flex: 1, height: 48, borderRadius: Radius.control, alignItems: 'center', justifyContent: 'center' },
   panel: { padding: Spacing.three },
 });

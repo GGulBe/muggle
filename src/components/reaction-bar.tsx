@@ -4,7 +4,7 @@ import { SmilePlus } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInUp, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
-import { Palette, Radius } from '@/constants/theme';
+import { Neo, Palette, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { firstEmoji, type Reaction } from '@/lib/party';
 
@@ -44,7 +44,7 @@ export function ReactionBar({ reactions, me, onToggle }: Props) {
 
   const chip = (on: boolean) => [
     styles.chip,
-    { borderColor: on ? Palette.glacier : Palette.line, backgroundColor: on ? Palette.glacierSoft : Palette.white },
+    on ? Neo.on : Neo.off,
   ];
 
   return (
@@ -70,7 +70,7 @@ export function ReactionBar({ reactions, me, onToggle }: Props) {
         accessibilityLabel="이모지 반응 추가"
         onPress={() => setAdding(true)}
         style={({ pressed }) => [...chip(false), pressed && styles.pressed]}>
-        <SmilePlus size={16} strokeWidth={1.5} color={Palette.muted} />
+        <SmilePlus size={18} strokeWidth={2.5} color={Palette.ink} />
       </Pressable>
 
       {/* 키보드에 가리지 않게 화면 위쪽에 띄우는 입력창. 키보드의 이모지 탭에서 아무거나 고르면 바로 반응 */}
@@ -90,7 +90,7 @@ export function ReactionBar({ reactions, me, onToggle }: Props) {
                   placeholder="이모지"
                   placeholderTextColor={theme.muted}
                   accessibilityLabel="반응할 이모지 입력"
-                  style={[styles.input, { color: theme.text, borderColor: Palette.glacier }]}
+                  style={[styles.input, { color: theme.text }]}
                 />
               </View>
             </Pressable>
@@ -103,11 +103,11 @@ export function ReactionBar({ reactions, me, onToggle }: Props) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.chip, paddingHorizontal: 10, minHeight: 32 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: Radius.chip, paddingHorizontal: 10, minHeight: 32 },
   pressed: { transform: [{ scale: 0.96 }] },
   mineCount: { color: Palette.ink, fontWeight: '600' },
   backdrop: { flex: 1, backgroundColor: 'rgba(29,42,51,0.4)', paddingTop: 120, paddingHorizontal: 24 },
-  sheet: { borderRadius: Radius.card, padding: 20, backgroundColor: Palette.white },
+  sheet: { ...Neo.box, ...Neo.shadow, padding: 20, backgroundColor: Palette.white },
   inputRow: { marginTop: 12 },
-  input: { height: 56, borderWidth: 1.5, borderRadius: Radius.control, paddingHorizontal: 16, fontSize: 28, textAlign: 'center' },
+  input: { height: 56, ...Neo.input, paddingHorizontal: 16, fontSize: 28, textAlign: 'center' },
 });

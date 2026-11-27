@@ -11,8 +11,7 @@ import { Station } from '@/components/station';
 import { Roulette } from '@/components/roulette';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Palette, Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Neo, Palette, Radius, Spacing } from '@/constants/theme';
 import {
   formatDay, inviteUrl, MAX_MEMBERS, PARTY_DETAIL_SELECT, SLOT_LABEL, SLOT_TIME, STATUS_LABEL,
   type Candidate, type Member, type PartyDetail, type Reaction,
@@ -22,7 +21,6 @@ import { supabase } from '@/lib/supabase';
 export default function PartyScreen() {
   // 화면 간 전달 값: id(필수), welcome(새 파티·참여 화면이 보냄), address(출발지 화면이 돌려줌)
   const { id, welcome, address } = useLocalSearchParams<{ id: string; welcome?: 'created' | 'joined'; address?: string }>();
-  const theme = useTheme();
   const [party, setParty] = useState<PartyDetail | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [me, setMe] = useState<string | null>(null);
@@ -291,13 +289,13 @@ export default function PartyScreen() {
       accessibilityRole="button"
       onPress={onPress}
       disabled={!editable}
-      style={({ pressed }) => [styles.step, !editable && styles.dim, pressed && styles.pressed]}>
+      style={({ pressed }) => [styles.step, !editable && styles.dim, pressed && Neo.pressedSm]}>
       {ok
-        ? <CircleCheck size={18} strokeWidth={1.5} color={Palette.glacierDeep} />
-        : <Circle size={18} strokeWidth={1.5} color={Palette.muted} />}
+        ? <CircleCheck size={20} strokeWidth={2.5} color={Palette.ink} fill={Palette.glacier} />
+        : <Circle size={20} strokeWidth={2.5} color={Palette.muted} />}
       <ThemedText style={styles.flex}>{label}</ThemedText>
       <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.stepValue}>{value}</ThemedText>
-      <ChevronRight size={18} strokeWidth={1.5} color={Palette.muted} />
+      <ChevronRight size={20} strokeWidth={2.5} color={Palette.ink} />
     </Pressable>
   );
 
@@ -310,7 +308,7 @@ export default function PartyScreen() {
         keyExtractor={(m) => m.user_id}
         ListHeaderComponent={
           <View style={styles.header}>
-            <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+            <View style={styles.card}>
               <ThemedText type="small" themeColor="textSecondary">
                 초대 코드 · {STATUS_LABEL[party.status]}{fixedLabel ? ` · ${fixedLabel}` : ''}
               </ThemedText>
@@ -319,7 +317,7 @@ export default function PartyScreen() {
             </View>
 
             {welcome && gathering && (
-              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: Palette.glacierSoft }]}>
+              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, styles.cardWhite]}>
                 <ThemedText type="smallBold">{welcome === 'created' ? '파티를 만들었어요' : '파티에 참여했어요'}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {welcome === 'created' ? '초대하기로 친구들에게 코드를 보내 주세요' : '출발지와 가능한 날짜를 입력해 주세요'}
@@ -329,7 +327,7 @@ export default function PartyScreen() {
 
             {/* 확정 */}
             {party.status === 'closed' && (
-              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={styles.card}>
                 <ThemedText type="smallBold">{tied.length > 1 ? `${tied.length}곳이 동점이라 룰렛으로 정했어요` : '약속이 정해졌어요'}</ThemedText>
                 {tied.length > 1 && party.final_place_id && (
                   <>
@@ -342,19 +340,22 @@ export default function PartyScreen() {
                     {isHost && !hideResult && <Button title="마음에 안 들면 다시 돌리기" variant="secondary" onPress={respin} />}
                   </>
                 )}
-                {when && <ThemedText type="subtitle">{when}</ThemedText>}
-                {!hideResult && party.final_place && (
-                  <View style={styles.finalPlace}>
-                    <ThemedText style={styles.finalName}>{party.final_place.name}</ThemedText>
-                    <View style={styles.metaRow}>
-                      <ThemedText type="small" themeColor="textSecondary">{party.final_place.category}</ThemedText>
-                      {party.final_place.stations && <Station name={party.final_place.stations.name} />}
-                      {placeReviews && placeReviews.n > 0 && (
-                        <ThemedText type="small" themeColor="textSecondary">★ {placeReviews.avg.toFixed(1)} · 후기 {placeReviews.n}개</ThemedText>
-                      )}
-                    </View>
-                  </View>
-                )}
+                {/* 확정 결과: 빨간 블록 (룰렛이 멈추기 전엔 날짜만) */}
+                <View style={[styles.finalBlock, hideResult && styles.finalPending]}>
+                  {when && <ThemedText type="subtitle" style={!hideResult && styles.onRed}>{when}</ThemedText>}
+                  {!hideResult && party.final_place && (
+                    <>
+                      <ThemedText style={[styles.finalName, styles.onRed]}>{party.final_place.name}</ThemedText>
+                      <View style={styles.metaRow}>
+                        <ThemedText type="small" style={styles.onRedSoft}>{party.final_place.category}</ThemedText>
+                        {party.final_place.stations && <Station name={party.final_place.stations.name} onDark />}
+                        {placeReviews && placeReviews.n > 0 && (
+                          <ThemedText type="small" style={styles.onRedSoft}>★ {placeReviews.avg.toFixed(1)} · 후기 {placeReviews.n}개</ThemedText>
+                        )}
+                      </View>
+                    </>
+                  )}
+                </View>
                 <View style={styles.row}>
                   <Button title="캘린더에 추가" variant="secondary" onPress={addToCalendar} style={styles.flex} />
                   {party.final_place && <Button title="길찾기" variant="secondary" onPress={directions} style={styles.flex} />}
@@ -386,7 +387,7 @@ export default function PartyScreen() {
 
             {/* 투표 (후보) */}
             {!gathering && candidates.length > 0 && (
-              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={styles.card}>
                 <ThemedText type="smallBold">{voting ? '어디로 갈까요? (익명 투표)' : '투표 결과'}</ThemedText>
                 {voting && when && <ThemedText type="subtitle">{when}</ThemedText>}
                 {voting && (
@@ -413,7 +414,7 @@ export default function PartyScreen() {
                             ...(party.fixed_mode === 'none' ? { max: Math.round(c.max_min), avg: Math.round(c.avg_min) } : {}),
                           },
                         })}
-                        style={({ pressed }) => [styles.candidateMain, pressed && styles.pressed]}>
+                        style={({ pressed }) => [styles.candidateMain, pressed && { opacity: 0.7 }]}>
                         <View style={styles.flex}>
                           <View style={styles.nameRow}>
                             <ThemedText style={styles.candName}>{c.places?.name}</ThemedText>
@@ -437,9 +438,9 @@ export default function PartyScreen() {
                             disabled={!canVote}
                             hitSlop={8}
                             onPress={() => vote(c.place_id)}
-                            style={({ pressed }) => [styles.voteBtn, picked && styles.voteOn, pressed && styles.pressed, !canVote && !picked && styles.dim]}>
-                            {picked && <Check size={16} strokeWidth={2} color={Palette.ink} />}
-                            <ThemedText type="small" style={styles.voteText}>{picked ? '투표함' : '투표'}</ThemedText>
+                            style={({ pressed }) => [styles.voteBtn, picked && styles.voteOn, pressed && Neo.pressedSm, !canVote && !picked && styles.dim]}>
+                            {picked && <Check size={16} strokeWidth={3} color={Palette.white} />}
+                            <ThemedText type="small" style={[styles.voteText, picked && { color: Palette.white }]}>{picked ? '투표함' : '투표'}</ThemedText>
                           </Pressable>
                         ) : null}
                       </Pressable>
@@ -464,7 +465,7 @@ export default function PartyScreen() {
             )}
 
             {gathering && mine && (
-              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={styles.card}>
                 <ThemedText type="smallBold">내 입력</ThemedText>
                 {step('출발지', mine.lat != null ? address || '설정됨' : '정하기', mine.lat != null, () =>
                   router.push({ pathname: '/party/[id]/pin', params: { id, code: party.code, lat: mine.lat ?? '', lng: mine.lng ?? '' } }))}
@@ -473,7 +474,7 @@ export default function PartyScreen() {
                 {step('내 취향 (비공개)', myPrefs ? `${myPrefs}개` : '선택', myPrefs > 0, () => router.push('/preferences'))}
                 <View style={styles.switchRow}>
                   <ThemedText>자차로 이동해요</ThemedText>
-                  <Switch value={mine.has_car} onValueChange={setCar} disabled={!editable} accessibilityLabel="자차 이용" trackColor={{ true: Palette.glacier, false: Palette.line }} thumbColor={Palette.white} />
+                  <Switch value={mine.has_car} onValueChange={setCar} disabled={!editable} accessibilityLabel="자차 이용" trackColor={{ true: Palette.ink, false: Palette.line }} thumbColor={Palette.white} />
                 </View>
                 <Button
                   title={mine.input_done ? '입력 완료 취소' : '입력 완료'}
@@ -497,8 +498,8 @@ export default function PartyScreen() {
         renderItem={({ item }) => (
           <View style={styles.member}>
             {(gathering ? item.input_done : voting ? item.vote_done : true)
-              ? <CircleCheck size={18} strokeWidth={1.5} color={Palette.glacierDeep} style={styles.memberIcon} />
-              : <Circle size={18} strokeWidth={1.5} color={Palette.muted} style={styles.memberIcon} />}
+              ? <CircleCheck size={22} strokeWidth={2.5} color={Palette.ink} fill={Palette.glacier} style={styles.memberIcon} />
+              : <Circle size={22} strokeWidth={2.5} color={Palette.muted} style={styles.memberIcon} />}
             <View style={styles.flex}>
               <ThemedText>
                 {item.profiles?.nickname || '이름 없음'}
@@ -550,47 +551,51 @@ function TravelBar({ max, avg, scale, fairest }: { max: number; avg: number; sca
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.four, gap: Spacing.two },
-  header: { gap: Spacing.three, marginBottom: Spacing.two },
-  card: { borderRadius: Radius.card, padding: Spacing.threeHalf, gap: Spacing.twoHalf, backgroundColor: Palette.white },
+  content: { padding: Spacing.four, paddingRight: Spacing.four + 4, gap: Spacing.twoHalf },
+  header: { gap: Spacing.threeHalf, marginBottom: Spacing.two },
+  // 주요 카드: Glacier Blue 면 + 잉크 테두리 + 딱딱한 그림자
+  card: { ...Neo.box, ...Neo.shadow, padding: Spacing.threeHalf, gap: Spacing.twoHalf, backgroundColor: Palette.glacier },
+  cardWhite: { backgroundColor: Palette.white },
   code: { letterSpacing: 6, fontVariant: ['tabular-nums'] },
   step: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.twoHalf, minHeight: 52,
-    paddingHorizontal: Spacing.three, borderRadius: Radius.control, backgroundColor: Palette.polar,
+    paddingHorizontal: Spacing.three, ...Neo.box, ...Neo.shadowSm, backgroundColor: Palette.white,
   },
   stepValue: { flexShrink: 1, maxWidth: '50%', textAlign: 'right' },
-  candidate: { borderRadius: Radius.control, padding: Spacing.three, gap: Spacing.twoHalf, backgroundColor: Palette.polar, borderWidth: 1.5, borderColor: 'transparent' },
-  candidateOn: { backgroundColor: Palette.glacierSoft, borderColor: Palette.glacier },
+  candidate: { ...Neo.box, ...Neo.shadowSm, padding: Spacing.three, gap: Spacing.twoHalf, backgroundColor: Palette.white },
+  candidateOn: { backgroundColor: Palette.glacierSoft, ...Neo.shadow },
   candidateMain: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.twoHalf },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  candName: { fontWeight: '500' },
+  candName: { fontWeight: '800', fontSize: 17 },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.two, marginTop: 2 },
-  wonBadge: { backgroundColor: Palette.red, borderRadius: Radius.chip, paddingHorizontal: 6, paddingVertical: 1 },
-  wonText: { color: Palette.white, fontSize: 12, lineHeight: 16 },
-  votes: { fontSize: 22, lineHeight: 28, fontWeight: '600', color: Palette.slate, fontVariant: ['tabular-nums'] },
+  wonBadge: { backgroundColor: Palette.red, borderRadius: Radius.chip, borderWidth: 2, borderColor: Palette.ink, paddingHorizontal: 6, paddingVertical: 1 },
+  wonText: { color: Palette.white, fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  votes: { fontSize: 26, lineHeight: 30, fontWeight: '900', color: Palette.ink, fontVariant: ['tabular-nums'] },
   travel: { marginTop: Spacing.two, gap: Spacing.one },
-  track: { height: 6, borderRadius: 3, backgroundColor: Palette.line },
-  fill: { height: 6, borderRadius: 3, backgroundColor: Palette.glacier },
-  tick: { position: 'absolute', top: -3, width: 2, height: 12, marginLeft: -1, borderRadius: 1, backgroundColor: Palette.ink },
+  track: { height: 10, borderRadius: 5, borderWidth: 2, borderColor: Palette.ink, backgroundColor: Palette.white, overflow: 'hidden' },
+  fill: { height: '100%', backgroundColor: Palette.glacier, borderRightWidth: 2, borderColor: Palette.ink },
+  tick: { position: 'absolute', top: -5, width: 3, height: 16, marginLeft: -1.5, borderRadius: 1, backgroundColor: Palette.ink },
   travelText: { fontVariant: ['tabular-nums'] },
-  num: { color: Palette.ink, fontWeight: '600' },
-  finalPlace: { gap: Spacing.one },
-  finalName: { fontSize: 20, lineHeight: 28, fontWeight: '500' },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  num: { color: Palette.ink, fontWeight: '800' },
+  finalBlock: { ...Neo.box, ...Neo.shadowSm, backgroundColor: Palette.red, padding: Spacing.three, gap: Spacing.one },
+  finalPending: { backgroundColor: Palette.white },
+  finalName: { fontSize: 22, lineHeight: 30, fontWeight: '800' },
+  onRed: { color: Palette.white },
+  onRedSoft: { color: 'rgba(255,255,255,0.9)' },
   voteBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: Spacing.twoHalf,
-    borderRadius: Radius.chip, backgroundColor: Palette.white, borderWidth: 1, borderColor: Palette.line,
+    ...Neo.box, ...Neo.shadowSm, borderRadius: Radius.chip, backgroundColor: Palette.white,
   },
-  voteOn: { backgroundColor: Palette.glacier, borderColor: Palette.glacier },
-  voteText: { color: Palette.ink, fontWeight: '500' },
-  dim: { opacity: 0.4 },
-  row: { flexDirection: 'row', gap: Spacing.two, justifyContent: 'center' },
+  voteOn: { backgroundColor: Palette.ink },
+  voteText: { color: Palette.ink, fontWeight: '800' },
+  dim: { opacity: 0.45 },
+  row: { flexDirection: 'row', gap: Spacing.twoHalf, justifyContent: 'center' },
   flex: { flex: 1 },
   link: { padding: Spacing.two },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.one },
   member: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.twoHalf,
-    paddingHorizontal: Spacing.three, paddingVertical: Spacing.twoHalf, borderRadius: Radius.control, backgroundColor: Palette.white,
+    paddingHorizontal: Spacing.three, paddingVertical: Spacing.twoHalf, ...Neo.box, ...Neo.shadowSm, backgroundColor: Palette.white,
   },
   memberIcon: { marginRight: 2 },
   hint: { textAlign: 'center' },

@@ -8,8 +8,7 @@ import { Button } from '@/components/button';
 import { Station } from '@/components/station';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Palette, Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Neo, Palette, Radius, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 type Place = {
@@ -28,7 +27,6 @@ export default function PlaceScreen() {
   const { id, place, round, canVote, max, avg } = useLocalSearchParams<{
     id: string; place: string; round: string; canVote?: string; max?: string; avg?: string;
   }>();
-  const theme = useTheme();
   const [info, setInfo] = useState<Place | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [voted, setVoted] = useState(false);
@@ -71,7 +69,7 @@ export default function PlaceScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ title: info.name }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Animated.View entering={FadeInDown.duration(300)} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+        <Animated.View entering={FadeInDown.duration(300)} style={styles.card}>
           <ThemedText type="subtitle" style={styles.name}>{info.name}</ThemedText>
           <View style={styles.meta}>
             <ThemedText themeColor="textSecondary">{info.category}</ThemedText>
@@ -135,15 +133,15 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: Spacing.four, gap: Spacing.three },
-  card: { borderRadius: Radius.card, padding: Spacing.threeHalf, gap: Spacing.one },
-  name: { fontSize: 24, lineHeight: 32 },
+  card: { ...Neo.box, ...Neo.shadow, backgroundColor: Palette.glacier, padding: Spacing.threeHalf, gap: Spacing.one, marginRight: 4 },
+  name: { fontSize: 26, lineHeight: 34 },
   row: { flexDirection: 'row', gap: Spacing.two },
   meta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.twoHalf },
   flex: { flex: 1 },
   section: { gap: Spacing.two },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { borderWidth: 1, borderColor: Palette.line, backgroundColor: Palette.white, borderRadius: Radius.chip, paddingHorizontal: Spacing.twoHalf, paddingVertical: 6 },
-  review: { borderRadius: Radius.control, padding: Spacing.three, gap: 4, backgroundColor: Palette.white },
+  chip: { ...Neo.off, borderRadius: Radius.chip, paddingHorizontal: Spacing.twoHalf, paddingVertical: 6 },
+  review: { ...Neo.box, ...Neo.shadowSm, padding: Spacing.three, gap: 4, backgroundColor: Palette.white, marginRight: 2 },
   gold: { color: Palette.slate },
   panel: { padding: Spacing.three },
 });

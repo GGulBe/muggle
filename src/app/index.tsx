@@ -7,7 +7,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { Neo, Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDay, SLOT_LABEL, STATUS_LABEL, type Party, type Slot } from '@/lib/party';
 import { supabase } from '@/lib/supabase';
@@ -92,7 +92,7 @@ export default function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel={`파티 ${item.code}, ${STATUS_LABEL[item.status]}`}
               onPress={() => router.push(`/party/${item.id}`)}
-              style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+              style={({ pressed }) => [styles.row, pressed && Neo.pressed]}>
               <View style={styles.rowText}>
                 <ThemedText style={styles.code}>{item.code}</ThemedText>
                 {item.status === 'closed' && item.final_date && item.final_slot ? (
@@ -102,11 +102,11 @@ export default function HomeScreen() {
                 ) : null}
               </View>
               <View style={[styles.status, item.status === 'voting' && styles.statusVoting, item.status === 'closed' && styles.statusClosed]}>
-                <ThemedText type="small" style={[styles.statusText, item.status === 'voting' && { color: Palette.glacierDeep }, item.status === 'closed' && { color: Palette.white }]}>
+                <ThemedText type="small" style={[styles.statusText, item.status === 'closed' && { color: Palette.white }]}>
                   {STATUS_LABEL[item.status]}
                 </ThemedText>
               </View>
-              <ChevronRight size={18} strokeWidth={1.5} color={Palette.muted} />
+              <ChevronRight size={20} strokeWidth={2.5} color={Palette.ink} />
             </Pressable>
           </Animated.View>
         )}
@@ -133,27 +133,26 @@ function joinError(message: string) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.four, gap: Spacing.two },
-  header: { gap: Spacing.three, marginBottom: Spacing.two },
+  content: { padding: Spacing.four, gap: Spacing.twoHalf },
+  header: { gap: Spacing.three, marginBottom: Spacing.one },
   titleBlock: { gap: Spacing.one, marginTop: Spacing.two, marginBottom: Spacing.two },
   section: { marginTop: Spacing.four },
-  joinRow: { flexDirection: 'row', gap: Spacing.two },
+  joinRow: { flexDirection: 'row', gap: Spacing.twoHalf },
   input: {
-    flex: 1, height: 48, borderWidth: 1, borderColor: Palette.line, borderRadius: Radius.control,
-    backgroundColor: Palette.white, paddingHorizontal: Spacing.three, fontSize: 16,
+    flex: 1, height: 48, ...Neo.box, backgroundColor: Palette.white,
+    paddingHorizontal: Spacing.three, fontSize: 16, fontWeight: '600',
   },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.twoHalf, minHeight: 64,
     paddingHorizontal: Spacing.three, paddingVertical: Spacing.twoHalf,
-    backgroundColor: Palette.white, borderRadius: Radius.control,
+    backgroundColor: Palette.white, ...Neo.box, ...Neo.shadow, marginRight: 4,
   },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   rowText: { flex: 1, gap: 2 },
-  code: { fontWeight: '500', letterSpacing: 1, fontVariant: ['tabular-nums'] },
-  status: { borderRadius: Radius.chip, paddingHorizontal: Spacing.two, paddingVertical: 2, backgroundColor: Palette.polar },
-  statusVoting: { backgroundColor: Palette.glacierSoft },
+  code: { fontWeight: '800', fontSize: 18, letterSpacing: 1, fontVariant: ['tabular-nums'] },
+  status: { borderRadius: Radius.chip, borderWidth: 2, borderColor: Palette.ink, paddingHorizontal: Spacing.two, paddingVertical: 1, backgroundColor: Palette.white },
+  statusVoting: { backgroundColor: Palette.glacier },
   statusClosed: { backgroundColor: Palette.red },
-  statusText: { color: Palette.secondary },
+  statusText: { color: Palette.ink, fontWeight: '700', fontSize: 13 },
   footer: { alignItems: 'center', gap: Spacing.one, padding: Spacing.five },
   underline: { textDecorationLine: 'underline' },
 });

@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Palette, Spacing } from '@/constants/theme';
+import { Neo, Palette, Spacing } from '@/constants/theme';
 import { isConfigured, setSessionFromUrl, supabase } from '@/lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession(); // 웹에서만 필요
@@ -67,7 +67,7 @@ export function LoginScreen() {
             accessibilityRole="button"
             onPress={onPress}
             disabled={busy}
-            style={({ pressed }) => [styles.kakao, pressed && { opacity: 0.8 }]}>
+            style={({ pressed }) => [styles.kakao, pressed && Neo.pressed]}>
             {busy ? <ActivityIndicator color="#191919" /> : <Text style={styles.kakaoText}>카카오로 시작하기</Text>}
           </Pressable>
         ) : (
@@ -91,8 +91,8 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   // 카카오 로그인 버튼 가이드: #FEE500 배경, 85% 검정 글자
   kakao: {
-    alignSelf: 'stretch', maxWidth: 360, height: 52, borderRadius: 12,
+    alignSelf: 'stretch', maxWidth: 360, height: 52, ...Neo.box, ...Neo.shadow,
     backgroundColor: '#FEE500', alignItems: 'center', justifyContent: 'center',
   },
-  kakaoText: { color: 'rgba(0,0,0,0.85)', fontSize: 16, fontWeight: '600' },
+  kakaoText: { color: 'rgba(0,0,0,0.85)', fontSize: 16, fontWeight: '800' },
 });

@@ -7,8 +7,7 @@ import { Ban, Heart } from 'lucide-react-native';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Palette, Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Neo, Palette, Radius, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 type Kind = 'like' | 'dislike';
@@ -18,7 +17,6 @@ const NEXT: Record<'none' | Kind, 'none' | Kind> = { none: 'like', like: 'dislik
 
 // 취향은 파티가 아니라 사람 단위. 본인 외 누구도 볼 수 없다 (RLS). 추천 함수만 읽는다
 export default function PreferencesScreen() {
-  const theme = useTheme();
   const [categories, setCategories] = useState<string[]>([]);
   const [regions, setRegions] = useState<{ id: string; name: string }[]>([]);
   const [prefs, setPrefs] = useState<Map<string, Kind> | null>(null);
@@ -63,8 +61,7 @@ export default function PreferencesScreen() {
 
   const chip = (key: string, label: string) => {
     const v = prefs?.get(key);
-    const color = v === 'like' ? Palette.glacier : v === 'dislike' ? Palette.red : Palette.line;
-    return (
+        return (
       <Pressable
         key={key}
         accessibilityRole="button"
@@ -72,12 +69,12 @@ export default function PreferencesScreen() {
         onPress={() => cycle(key)}
         style={({ pressed }) => [
           styles.chip,
-          { borderColor: color, backgroundColor: v === 'like' ? Palette.glacierSoft : v === 'dislike' ? '#FDEBEE' : Palette.white },
-          pressed && { transform: [{ scale: 0.96 }] },
+          v === 'like' ? Neo.on : v === 'dislike' ? styles.dislike : Neo.off,
+          pressed && Neo.pressedSm,
         ]}>
-        {v === 'like' && <Heart size={16} strokeWidth={1.5} color={Palette.glacierDeep} fill={Palette.glacier} />}
-        {v === 'dislike' && <Ban size={16} strokeWidth={1.5} color={Palette.red} />}
-        <ThemedText type="small">{label}</ThemedText>
+        {v === 'like' && <Heart size={16} strokeWidth={2.5} color={Palette.ink} fill={Palette.white} />}
+        {v === 'dislike' && <Ban size={16} strokeWidth={2.5} color={Palette.white} />}
+        <ThemedText type="small" style={[{ fontWeight: '700' }, v === 'dislike' && { color: Palette.white }]}>{label}</ThemedText>
       </Pressable>
     );
   };
@@ -87,7 +84,7 @@ export default function PreferencesScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={[styles.notice, { backgroundColor: theme.backgroundElement }]}>
+        <View style={styles.notice}>
           <ThemedText type="smallBold">나만 볼 수 있어요</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             누구에게도 공개되지 않고, 추천 계산에만 쓰여요. 한 번 누르면 좋아요, 두 번 누르면 싫어요예요. 싫어요를 고른 곳은 추천에서 빠져요.
@@ -109,8 +106,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: Spacing.four, gap: Spacing.three },
-  notice: { borderRadius: Radius.card, padding: Spacing.three, gap: 4 },
+  notice: { ...Neo.box, ...Neo.shadow, backgroundColor: Palette.glacier, padding: Spacing.three, gap: 4, marginRight: 4 },
+  dislike: { borderWidth: 2, borderColor: Palette.ink, backgroundColor: Palette.red, boxShadow: `2px 2px 0px ${Palette.ink}` },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.chip, paddingHorizontal: Spacing.twoHalf, paddingVertical: Spacing.two },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: Radius.chip, paddingHorizontal: Spacing.twoHalf, paddingVertical: Spacing.two },
   panel: { padding: Spacing.three },
 });

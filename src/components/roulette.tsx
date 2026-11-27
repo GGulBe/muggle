@@ -1,10 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { G, Path, Text as SvgText } from 'react-native-svg';
 
-import { ThemedText } from '@/components/themed-text';
 
 type Props = {
   items: { id: number; label: string }[]; // 동점 후보
@@ -16,8 +15,8 @@ type Props = {
 const SIZE = 260;
 const R = SIZE / 2;
 const SPIN_MS = 4000;
-// 빙하색 계열과 흰색을 번갈아 (글자는 잉크색). 빨강은 화살표와 결과에만
-const COLORS = ['#9CC6E0', '#FFFFFF', '#C9E0EE', '#E3EEF5', '#7FB3D3', '#F1F3F4', '#B3D4E8', '#DCE2E6'];
+// 파란 카드 위에서 보이게 흰색·옅은 빙하색을 번갈아, 칸마다 잉크 테두리 (네오 브루탈리즘)
+const COLORS = ['#FFFFFF', '#E3EEF5', '#F1F3F4', '#C9E0EE'];
 
 // 위쪽(12시)에서 시계 방향 각도 → 원 위의 점
 const point = (deg: number, r = R) => {
@@ -65,6 +64,7 @@ export function Roulette({ items, winner, playKey, onDone }: Props) {
   return (
     <View style={styles.wrap} accessibilityLabel={done && won ? `룰렛 결과 ${won.label}` : '룰렛을 돌리는 중'}>
       <View style={styles.pointer} />
+      <View style={styles.wheel}>
       <Animated.View style={wheel}>
         <Svg width={SIZE} height={SIZE}>
           {items.map((it, i) => {
@@ -74,9 +74,9 @@ export function Roulette({ items, winner, playKey, onDone }: Props) {
               : `M ${R} ${R} L ${point(a)} A ${R} ${R} 0 ${seg > 180 ? 1 : 0} 1 ${point(a + seg)} Z`;
             return (
               <G key={it.id}>
-                <Path d={path} fill={COLORS[i % COLORS.length]} stroke="#DCE2E6" strokeWidth={1} />
+                <Path d={path} fill={COLORS[i % COLORS.length]} stroke="#1D2A33" strokeWidth={3} />
                 <G transform={`rotate(${a + seg / 2} ${R} ${R})`}>
-                  <SvgText x={R} y={R * 0.38} fill="#1D2A33" fontSize={14} fontWeight="500" textAnchor="middle">
+                  <SvgText x={R} y={R * 0.38} fill="#1D2A33" fontSize={15} fontWeight="800" textAnchor="middle">
                     {it.label.length > 9 ? `${it.label.slice(0, 8)}…` : it.label}
                   </SvgText>
                 </G>
@@ -85,11 +85,7 @@ export function Roulette({ items, winner, playKey, onDone }: Props) {
           })}
         </Svg>
       </Animated.View>
-      {done && won && (
-        <Animated.View entering={FadeIn.duration(300)}>
-          <ThemedText type="subtitle" style={styles.result}>{won.label}</ThemedText>
-        </Animated.View>
-      )}
+      </View>
     </View>
   );
 }
@@ -102,5 +98,5 @@ const styles = StyleSheet.create({
     borderLeftWidth: 12, borderRightWidth: 12, borderTopWidth: 20,
     borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#E4002B',
   },
-  result: { fontSize: 22, lineHeight: 30, textAlign: 'center', color: '#E4002B' },
+  wheel: { borderRadius: R, boxShadow: '4px 4px 0px #1D2A33' },
 });

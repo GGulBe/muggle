@@ -6,7 +6,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { Neo, Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -106,8 +106,7 @@ export default function NewPartyScreen() {
   const chip = (selected: boolean) => [
     styles.chip,
     {
-      borderColor: selected ? Palette.glacier : Palette.line,
-      backgroundColor: selected ? Palette.glacierSoft : Palette.white,
+      ...(selected ? Neo.on : Neo.off),
     },
   ];
 
@@ -128,7 +127,7 @@ export default function NewPartyScreen() {
             accessibilityState={{ selected: mode === m.mode }}
             onPress={() => pickMode(m.mode)}
             style={[styles.card, ...chip(mode === m.mode).slice(1)]}>
-            <ThemedText>{m.title}</ThemedText>
+            <ThemedText style={{ fontWeight: '800' }}>{m.title}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {m.body}
             </ThemedText>
@@ -232,22 +231,14 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.four, gap: Spacing.three },
   typing: { paddingBottom: 600 },
-  card: { borderWidth: 1.5, borderRadius: Radius.control, padding: Spacing.three, gap: 2 },
+  card: { borderRadius: Radius.card, padding: Spacing.three, gap: 2 },
   pickedRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: Palette.line,
-    borderRadius: Radius.control,
-    backgroundColor: Palette.white,
-    paddingHorizontal: Spacing.three,
-    fontSize: 16,
-  },
-  row: { borderBottomWidth: 1, borderColor: Palette.line, paddingVertical: Spacing.twoHalf, gap: 2 },
+  input: { height: 48, ...Neo.input, paddingHorizontal: Spacing.three, fontSize: 16, fontWeight: '600' },
+  row: { borderBottomWidth: 2, borderColor: Palette.ink, paddingVertical: Spacing.twoHalf, gap: 2 },
   chips: { gap: Spacing.two },
   chip: {
     borderWidth: 1,

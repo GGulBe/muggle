@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { Neo, Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -98,7 +98,7 @@ export default function ReviewScreen() {
 
   const chip = (on: boolean) => [
     styles.chip,
-    { borderColor: on ? Palette.glacier : Palette.line, backgroundColor: on ? Palette.glacierSoft : Palette.white },
+    on ? Neo.on : Neo.off,
   ];
   const focusInput = (k: 'menu' | 'body') => {
     setTyping(true);
@@ -197,11 +197,11 @@ const styles = StyleSheet.create({
   star: { fontSize: 40, lineHeight: 48 },
   gold: { color: Palette.slate },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.chip, paddingHorizontal: Spacing.twoHalf, paddingVertical: Spacing.two },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: Radius.chip, paddingHorizontal: Spacing.twoHalf, paddingVertical: Spacing.two },
   addRow: { flexDirection: 'row', gap: Spacing.two, alignItems: 'center' },
-  input: { height: 48, borderWidth: 1, borderColor: Palette.line, borderRadius: Radius.control, backgroundColor: Palette.white, paddingHorizontal: Spacing.three, fontSize: 16 },
+  input: { height: 48, ...Neo.input, paddingHorizontal: Spacing.three, fontSize: 16 },
   body: { height: 96, paddingTop: 12, textAlignVertical: 'top' },
-  review: { borderRadius: Radius.control, padding: Spacing.three, gap: 4, backgroundColor: Palette.white },
+  review: { ...Neo.box, ...Neo.shadowSm, padding: Spacing.three, gap: 4, backgroundColor: Palette.white, marginRight: 2 },
   flex: { flex: 1 },
   panel: { padding: Spacing.three },
 });

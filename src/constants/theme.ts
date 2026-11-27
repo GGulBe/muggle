@@ -7,7 +7,8 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-// 팔레트: Polar White 60% (바탕) · Glacier Blue 30% (선택·칩·데이터) · Racing Red 10% (주요 버튼·확정·핵심 숫자 하나)
+// 팔레트: Polar White 60% (바탕) · Glacier Blue 30% (주요 카드 면·선택) · Racing Red 10% (주요 버튼·확정 결과)
+// 스타일: 네오 브루탈리즘 — 잉크색 굵은 테두리, 흐림 없는 그림자, 8px 모서리
 export const Palette = {
   polar: '#F1F3F4', // 바탕
   white: '#FFFFFF', // 카드
@@ -78,8 +79,22 @@ export const Spacing = {
   six: 64,
 } as const;
 
-// 모서리: 칩·작은 버튼 8, 행·입력·버튼 12, 카드 16
-export const Radius = { chip: 8, control: 12, card: 16 } as const;
+// 모서리: 네오 브루탈리즘이라 전부 8 (살짝 둥글게)
+export const Radius = { chip: 8, control: 8, card: 8 } as const;
+
+// 네오 브루탈리즘 공통 스타일: 잉크 테두리 + 오른쪽 아래로 밀린 단색 그림자 (RN boxShadow, 새 아키텍처)
+export const Neo = {
+  box: { borderWidth: 2, borderColor: Palette.ink, borderRadius: Radius.card },
+  shadow: { boxShadow: `4px 4px 0px ${Palette.ink}` },
+  shadowSm: { boxShadow: `2px 2px 0px ${Palette.ink}` },
+  // 누르면 그림자 쪽으로 눌려 들어간다
+  pressed: { transform: [{ translateX: 4 }, { translateY: 4 }], boxShadow: 'none' },
+  pressedSm: { transform: [{ translateX: 2 }, { translateY: 2 }], boxShadow: 'none' },
+  // 칩·선택 블록: 꺼짐 = 흰색, 켜짐 = Glacier Blue + 작은 그림자
+  off: { borderWidth: 2, borderColor: Palette.ink, backgroundColor: Palette.white },
+  on: { borderWidth: 2, borderColor: Palette.ink, backgroundColor: Palette.glacier, boxShadow: `2px 2px 0px ${Palette.ink}` },
+  input: { borderWidth: 2, borderColor: Palette.ink, borderRadius: Radius.control, backgroundColor: Palette.white },
+} as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;

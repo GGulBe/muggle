@@ -16,7 +16,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 }
 
 const styles = StyleSheet.create({
-  // 위계는 굵기보다 크기·색으로. 굵기는 400·500, 강조만 600
+  // 네오 브루탈리즘: 제목은 굵고 크게, 본문은 500
   small: {
     fontSize: 14,
     lineHeight: 20,
@@ -25,24 +25,24 @@ const styles = StyleSheet.create({
   smallBold: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 600,
+    fontWeight: 700,
   },
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 400,
+    fontWeight: 500,
   },
   title: {
     fontSize: 36,
-    fontWeight: 600,
+    fontWeight: 800,
     lineHeight: 44,
-    color: Palette.slate,
+    color: Palette.ink,
   },
   subtitle: {
     fontSize: 28,
     lineHeight: 36,
-    fontWeight: 600,
-    color: Palette.slate,
+    fontWeight: 800,
+    color: Palette.ink,
   },
   link: {
     lineHeight: 30,
