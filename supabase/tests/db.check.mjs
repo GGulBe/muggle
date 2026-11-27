@@ -86,6 +86,15 @@ assert.deepEqual(counts.map((r) => r.n), [2, 2]);
 // 동점 → 점수 낮은(=1) 장소
 assert.equal((await db.query('select final_place_id from parties where id = $1', [P1])).rows[0].final_place_id, 1);
 
+// 후기: 확정 장소에만, 멤버만, 파티당 1개
+await as(2, `insert into reviews (place_id, party_id, rating, menu) values (1, $1, 5, '삼겹살, 냉면')`, [P1]);
+await fails(2, `insert into reviews (place_id, party_id, rating) values (1, $1, 4)`, [P1], /duplicate|unique/);
+await fails(3, `insert into reviews (place_id, party_id, rating) values (2, $1, 4)`, [P1], /row-level security/); // 확정 장소 아님
+await fails(8, `insert into reviews (place_id, party_id, rating) values (1, $1, 4)`, [P1], /row-level security/); // 멤버 아님
+await fails(3, `insert into reviews (place_id, rating) values (1, 4)`, [], /row-level security/); // 파티 없는 후기
+await as(2, 'delete from reviews where user_id = auth.uid() and party_id = $1', [P1]); // 수정 = 지우고 다시 쓰기
+await as(2, `insert into reviews (place_id, party_id, rating) values (1, $1, 4)`, [P1]);
+
 // 재투표: 방장만
 await fails(2, `select restart_party($1, 'voting')`, [P1], /host only/);
 await as(1, `select restart_party($1, 'voting')`, [P1]);

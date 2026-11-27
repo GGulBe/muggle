@@ -29,6 +29,7 @@ export default function PartyScreen() {
   const [myVote, setMyVote] = useState<number | null>(null);
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [counts, setCounts] = useState<Map<number, number> | null>(null); // 확정 후에만 (개수만, 누가 뭘 골랐는지는 없음)
+  const [placeReviews, setPlaceReviews] = useState<{ n: number; avg: number; mine: boolean } | null>(null);
   const [busy, setBusy] = useState<'done' | 'recommend' | 'vote' | null>(null);
 
   const loadReactions = useCallback(async (round: number) => {
@@ -66,6 +67,16 @@ export default function PartyScreen() {
       const { data: v } = await supabase.from('votes').select('place_id').eq('party_id', id).eq('round', detail.round).maybeSingle();
       setMyVote(v?.place_id ?? null);
       loadReactions(detail.round);
+      // 확정 장소의 후기 요약 (앱 사용자 전체)
+      if (detail.status === 'closed' && detail.final_place_id) {
+        const { data: rv } = await supabase.from('reviews').select('rating, user_id, party_id').eq('place_id', detail.final_place_id);
+        const list = rv ?? [];
+        setPlaceReviews({
+          n: list.length,
+          avg: list.length ? list.reduce((s, r) => s + r.rating, 0) / list.length : 0,
+          mine: list.some((r) => r.user_id === u.user?.id && r.party_id === id),
+        });
+      }
       if (detail.status === 'closed' && detail.fixed_mode !== 'place') {
         const { data: n } = await supabase.rpc('vote_counts', { p: id });
         setCounts(new Map(((n as { place_id: number; n: number }[] | null) ?? []).map((x) => [x.place_id, x.n])));
@@ -297,10 +308,25 @@ export default function PartyScreen() {
                     <ThemedText type="small" themeColor="textSecondary"> · {party.final_place.category} · {party.final_place.stations?.name}</ThemedText>
                   </ThemedText>
                 )}
+                {placeReviews && placeReviews.n > 0 && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    <ThemedText type="small" style={styles.gold}>★</ThemedText> {placeReviews.avg.toFixed(1)} · 후기 {placeReviews.n}개
+                  </ThemedText>
+                )}
                 <View style={styles.row}>
                   <Button title="캘린더에 추가" variant="secondary" onPress={addToCalendar} style={styles.flex} />
                   {party.final_place && <Button title="길찾기" variant="secondary" onPress={directions} style={styles.flex} />}
                 </View>
+                {party.final_place_id && (
+                  <Button
+                    title={placeReviews?.mine ? '내 후기 수정' : '다녀왔어요 · 후기 남기기'}
+                    variant={placeReviews?.mine ? 'secondary' : 'primary'}
+                    onPress={() => router.push({
+                      pathname: '/party/[id]/review',
+                      params: { id, place: party.final_place_id!, name: party.final_place?.name ?? '' },
+                    })}
+                  />
+                )}
                 {isHost && (
                   <View style={styles.row}>
                     {party.fixed_mode !== 'place' && (
@@ -452,6 +478,7 @@ const styles = StyleSheet.create({
   candidateMain: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   pressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
   badge: { color: '#208AEF' },
+  gold: { color: '#F5B301' },
   when: { fontSize: 22, lineHeight: 30 },
   row: { flexDirection: 'row', gap: Spacing.two, justifyContent: 'center' },
   flex: { flex: 1 },
