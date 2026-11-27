@@ -2,14 +2,16 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { useCallback, useEffect, useState } from 'react';
 import * as Calendar from 'expo-calendar/legacy';
 import { Alert, FlatList, Linking, Pressable, Share, StyleSheet, Switch, View } from 'react-native';
+import { Check, ChevronRight, Circle, CircleCheck } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 
 import { Button } from '@/components/button';
 import { ReactionBar } from '@/components/reaction-bar';
+import { Station } from '@/components/station';
 import { Roulette } from '@/components/roulette';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   formatDay, inviteUrl, MAX_MEMBERS, PARTY_DETAIL_SELECT, SLOT_LABEL, SLOT_TIME, STATUS_LABEL,
@@ -117,6 +119,9 @@ export default function PartyScreen() {
   // 최다 득표 동점 후보 (2곳 이상이면 룰렛)
   const top = counts ? Math.max(0, ...counts.values()) : 0;
   const tied = counts ? candidates.filter((c) => (counts.get(c.place_id) ?? 0) === top) : [];
+  // 이동시간 막대: 후보 중 가장 긴 최대 이동시간을 100%로, 최대 이동시간이 가장 짧은 후보가 '가장 공평'
+  const travelScale = Math.max(1, ...candidates.map((c) => c.max_min));
+  const fairest = candidates.length ? candidates.reduce((a, b) => (b.max_min < a.max_min ? b : a)).place_id : null;
   const spinKey = party ? `${id}:${party.round}:${party.final_place_id}` : '';
   // 투표로 확정됐는데 득표수를 아직 못 불러왔거나, 동점 룰렛이 아직 도는 중이면 결과를 가린다
   const hideResult = party?.status === 'closed' && party.fixed_mode !== 'place' && (!counts || (tied.length > 1 && revealed !== spinKey));
@@ -136,7 +141,7 @@ export default function PartyScreen() {
     setBusy(null);
     if (error) {
       const msg = error.message.includes('required')
-        ? '출발지와 가능 날짜를 하나 이상 정해야 완료할 수 있어요.'
+        ? '출발지와 가능 날짜를 하나 이상 정해야 완료할 수 있어요'
         : error.message;
       return Alert.alert('완료하지 못했어요', msg);
     }
@@ -253,7 +258,7 @@ export default function PartyScreen() {
 
   const removeOrLeave = () => {
     const [title, body, rpc] = isHost
-      ? ['파티를 삭제할까요?', '모든 멤버의 입력과 투표가 함께 지워지고 되돌릴 수 없어요.', 'delete_party']
+      ? ['파티를 삭제할까요?', '모든 멤버의 입력과 투표가 함께 지워지고 되돌릴 수 없어요', 'delete_party']
       : ['파티에서 나갈까요?', '내 출발지·가능 날짜가 이 파티에서 지워져요.', 'leave_party'];
     Alert.alert(title, body, [
       { text: '취소', style: 'cancel' },
@@ -263,7 +268,7 @@ export default function PartyScreen() {
         onPress: async () => {
           const { error } = await supabase.rpc(rpc, { p: id });
           if (error) {
-            const msg = error.message.includes('started') ? '투표가 시작된 뒤에는 나갈 수 없어요.' : error.message;
+            const msg = error.message.includes('started') ? '투표가 시작된 뒤에는 나갈 수 없어요' : error.message;
             return Alert.alert(isHost ? '삭제하지 못했어요' : '나가지 못했어요', msg);
           }
           router.dismissTo('/');
@@ -286,9 +291,13 @@ export default function PartyScreen() {
       accessibilityRole="button"
       onPress={onPress}
       disabled={!editable}
-      style={[styles.step, { borderColor: theme.backgroundSelected, opacity: editable ? 1 : 0.6 }]}>
-      <ThemedText>{ok ? '✓ ' : '○ '}{label}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.stepValue}>{value} ›</ThemedText>
+      style={({ pressed }) => [styles.step, !editable && styles.dim, pressed && styles.pressed]}>
+      {ok
+        ? <CircleCheck size={18} strokeWidth={1.5} color={Palette.glacierDeep} />
+        : <Circle size={18} strokeWidth={1.5} color={Palette.muted} />}
+      <ThemedText style={styles.flex}>{label}</ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.stepValue}>{value}</ThemedText>
+      <ChevronRight size={18} strokeWidth={1.5} color={Palette.muted} />
     </Pressable>
   );
 
@@ -305,15 +314,15 @@ export default function PartyScreen() {
               <ThemedText type="small" themeColor="textSecondary">
                 초대 코드 · {STATUS_LABEL[party.status]}{fixedLabel ? ` · ${fixedLabel}` : ''}
               </ThemedText>
-              <ThemedText type="subtitle" style={styles.code} selectable>{party.code}</ThemedText>
+              <ThemedText type="title" style={styles.code} selectable>{party.code}</ThemedText>
               {gathering && <Button title="초대하기" variant="secondary" onPress={share} />}
             </View>
 
             {welcome && gathering && (
-              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: '#208AEF22' }]}>
+              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: Palette.glacierSoft }]}>
                 <ThemedText type="smallBold">{welcome === 'created' ? '파티를 만들었어요' : '파티에 참여했어요'}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {welcome === 'created' ? '초대하기로 친구들에게 코드를 보내 주세요.' : '출발지와 가능한 날짜를 입력해 주세요.'}
+                  {welcome === 'created' ? '초대하기로 친구들에게 코드를 보내 주세요' : '출발지와 가능한 날짜를 입력해 주세요'}
                 </ThemedText>
               </Animated.View>
             )}
@@ -333,17 +342,18 @@ export default function PartyScreen() {
                     {isHost && !hideResult && <Button title="마음에 안 들면 다시 돌리기" variant="secondary" onPress={respin} />}
                   </>
                 )}
-                {when && <ThemedText type="subtitle" style={styles.when}>{when}</ThemedText>}
+                {when && <ThemedText type="subtitle">{when}</ThemedText>}
                 {!hideResult && party.final_place && (
-                  <ThemedText>
-                    {party.final_place.name}
-                    <ThemedText type="small" themeColor="textSecondary"> · {party.final_place.category} · {party.final_place.stations?.name}</ThemedText>
-                  </ThemedText>
-                )}
-                {!hideResult && placeReviews && placeReviews.n > 0 && (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    <ThemedText type="small" style={styles.gold}>★</ThemedText> {placeReviews.avg.toFixed(1)} · 후기 {placeReviews.n}개
-                  </ThemedText>
+                  <View style={styles.finalPlace}>
+                    <ThemedText style={styles.finalName}>{party.final_place.name}</ThemedText>
+                    <View style={styles.metaRow}>
+                      <ThemedText type="small" themeColor="textSecondary">{party.final_place.category}</ThemedText>
+                      {party.final_place.stations && <Station name={party.final_place.stations.name} />}
+                      {placeReviews && placeReviews.n > 0 && (
+                        <ThemedText type="small" themeColor="textSecondary">★ {placeReviews.avg.toFixed(1)} · 후기 {placeReviews.n}개</ThemedText>
+                      )}
+                    </View>
+                  </View>
                 )}
                 <View style={styles.row}>
                   <Button title="캘린더에 추가" variant="secondary" onPress={addToCalendar} style={styles.flex} />
@@ -378,10 +388,10 @@ export default function PartyScreen() {
             {!gathering && candidates.length > 0 && (
               <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
                 <ThemedText type="smallBold">{voting ? '어디로 갈까요? (익명 투표)' : '투표 결과'}</ThemedText>
-                {voting && when && <ThemedText>{when}</ThemedText>}
+                {voting && when && <ThemedText type="subtitle">{when}</ThemedText>}
                 {voting && (
                   <ThemedText type="small" themeColor="textSecondary">
-                    {mine?.vote_done ? '투표를 마쳤어요. 모두 마치면 결과가 나와요.' : '가고 싶은 곳에 모두 투표하세요 (여러 곳 가능). 가게를 누르면 정보를 볼 수 있어요. 누가 어디에 투표했는지는 아무도 몰라요.'}
+                    {mine?.vote_done ? '투표를 마쳤어요. 모두 마치면 결과가 나와요' : '가고 싶은 곳은 모두 골라도 돼요. 가게를 누르면 정보를 볼 수 있고, 누가 어디에 투표했는지는 아무도 몰라요'}
                   </ThemedText>
                 )}
                 {candidates.map((c, i) => {
@@ -392,7 +402,7 @@ export default function PartyScreen() {
                       key={c.place_id}
                       entering={FadeInDown.delay(i * 60).duration(300)}
                       layout={LinearTransition}
-                      style={[styles.candidate, { borderColor: picked ? '#208AEF' : theme.backgroundSelected, borderWidth: picked ? 2 : 1 }]}>
+                      style={[styles.candidate, picked && styles.candidateOn]}>
                       <Pressable
                         accessibilityRole="button"
                         accessibilityHint="가게 정보 보기"
@@ -405,14 +415,20 @@ export default function PartyScreen() {
                         })}
                         style={({ pressed }) => [styles.candidateMain, pressed && styles.pressed]}>
                         <View style={styles.flex}>
-                          <ThemedText>{i + 1}. {c.places?.name}{won ? <ThemedText type="smallBold" style={styles.badge}>  확정</ThemedText> : null}</ThemedText>
-                          <ThemedText type="small" themeColor="textSecondary">
-                            {c.places?.category} · {c.places?.stations?.name}
-                            {party.fixed_mode === 'none' ? ` · 최대 ${Math.round(c.max_min)}분 · 평균 ${Math.round(c.avg_min)}분` : ''}
-                          </ThemedText>
+                          <View style={styles.nameRow}>
+                            <ThemedText style={styles.candName}>{c.places?.name}</ThemedText>
+                            {won && <View style={styles.wonBadge}><ThemedText type="small" style={styles.wonText}>확정</ThemedText></View>}
+                          </View>
+                          <View style={styles.metaRow}>
+                            <ThemedText type="small" themeColor="textSecondary">{c.places?.category}</ThemedText>
+                            {c.places?.stations && <Station name={c.places.stations.name} />}
+                          </View>
+                          {party.fixed_mode === 'none' && (
+                            <TravelBar max={c.max_min} avg={c.avg_min} scale={travelScale} fairest={voting && c.place_id === fairest} />
+                          )}
                         </View>
                         {counts ? (
-                          <ThemedText type="smallBold">{counts.get(c.place_id) ?? 0}표</ThemedText>
+                          <ThemedText style={[styles.votes, won && { color: Palette.red }]}>{counts.get(c.place_id) ?? 0}<ThemedText type="small" themeColor="muted">표</ThemedText></ThemedText>
                         ) : voting ? (
                           <Pressable
                             accessibilityRole="checkbox"
@@ -422,7 +438,8 @@ export default function PartyScreen() {
                             hitSlop={8}
                             onPress={() => vote(c.place_id)}
                             style={({ pressed }) => [styles.voteBtn, picked && styles.voteOn, pressed && styles.pressed, !canVote && !picked && styles.dim]}>
-                            <ThemedText type="smallBold" style={{ color: picked ? '#fff' : '#208AEF' }}>{picked ? '✓ 투표함' : '투표'}</ThemedText>
+                            {picked && <Check size={16} strokeWidth={2} color={Palette.ink} />}
+                            <ThemedText type="small" style={styles.voteText}>{picked ? '투표함' : '투표'}</ThemedText>
                           </Pressable>
                         ) : null}
                       </Pressable>
@@ -456,7 +473,7 @@ export default function PartyScreen() {
                 {step('내 취향 (비공개)', myPrefs ? `${myPrefs}개` : '선택', myPrefs > 0, () => router.push('/preferences'))}
                 <View style={styles.switchRow}>
                   <ThemedText>자차로 이동해요</ThemedText>
-                  <Switch value={mine.has_car} onValueChange={setCar} disabled={!editable} accessibilityLabel="자차 이용" />
+                  <Switch value={mine.has_car} onValueChange={setCar} disabled={!editable} accessibilityLabel="자차 이용" trackColor={{ true: Palette.glacier, false: Palette.line }} thumbColor={Palette.white} />
                 </View>
                 <Button
                   title={mine.input_done ? '입력 완료 취소' : '입력 완료'}
@@ -478,17 +495,22 @@ export default function PartyScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <View style={[styles.member, { borderColor: theme.backgroundSelected }]}>
-            <ThemedText>
-              {item.profiles?.nickname || '이름 없음'}
-              {item.user_id === me ? ' (나)' : ''}
-              {item.user_id === party.host_id ? ' · 방장' : ''}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {[item.lat != null ? '출발지 ✓' : '출발지 –', item.has_car ? '자차' : null, gathering ? (item.input_done ? '입력 완료 ✓' : '입력 중') : voting ? (item.vote_done ? '투표 완료 ✓' : '투표 중') : null]
-                .filter(Boolean)
-                .join(' · ')}
-            </ThemedText>
+          <View style={styles.member}>
+            {(gathering ? item.input_done : voting ? item.vote_done : true)
+              ? <CircleCheck size={18} strokeWidth={1.5} color={Palette.glacierDeep} style={styles.memberIcon} />
+              : <Circle size={18} strokeWidth={1.5} color={Palette.muted} style={styles.memberIcon} />}
+            <View style={styles.flex}>
+              <ThemedText>
+                {item.profiles?.nickname || '이름 없음'}
+                {item.user_id === me ? ' (나)' : ''}
+                {item.user_id === party.host_id ? ' · 방장' : ''}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {[item.lat != null ? '출발지 설정' : '출발지 미정', item.has_car ? '자차' : null, gathering ? (item.input_done ? '입력 완료' : '입력 중') : voting ? (item.vote_done ? '투표 완료' : '투표 중') : null]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </ThemedText>
+            </View>
           </View>
         )}
         ListFooterComponent={
@@ -500,7 +522,7 @@ export default function PartyScreen() {
             )}
             {(isHost || gathering) && (
               <Pressable accessibilityRole="button" onPress={removeOrLeave} style={styles.danger}>
-                <ThemedText type="small" style={{ color: '#d93025' }}>{isHost ? '파티 삭제' : '파티 나가기'}</ThemedText>
+                <ThemedText type="small" style={{ color: Palette.red }}>{isHost ? '파티 삭제' : '파티 나가기'}</ThemedText>
               </Pressable>
             )}
           </View>
@@ -510,28 +532,67 @@ export default function PartyScreen() {
   );
 }
 
+// 모먼트: 후보마다 이동시간을 노선 막대로. 빙하색 막대 = 가장 오래 걸리는 사람, 눈금 = 평균
+function TravelBar({ max, avg, scale, fairest }: { max: number; avg: number; scale: number; fairest: boolean }) {
+  return (
+    <View style={styles.travel} accessibilityLabel={`이동시간 최대 ${Math.round(max)}분, 평균 ${Math.round(avg)}분${fairest ? ', 가장 공평' : ''}`}>
+      <View style={styles.track}>
+        <View style={[styles.fill, { width: `${(max / scale) * 100}%` }, fairest && { backgroundColor: Palette.red }]} />
+        <View style={[styles.tick, { left: `${(avg / scale) * 100}%` }]} />
+      </View>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.travelText}>
+        최대 <ThemedText type="small" style={[styles.num, fairest && { color: Palette.red }]}>{Math.round(max)}</ThemedText>분 · 평균 {Math.round(avg)}분
+        {fairest ? <ThemedText type="small" style={{ color: Palette.red }}>  가장 공평</ThemedText> : null}
+      </ThemedText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.four, gap: Spacing.two },
   header: { gap: Spacing.three, marginBottom: Spacing.two },
-  card: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
-  code: { letterSpacing: 6 },
-  step: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 14 },
-  stepValue: { flexShrink: 1, marginLeft: Spacing.three, textAlign: 'right' },
-  candidate: { borderRadius: 12, padding: 12, gap: Spacing.two },
-  candidateMain: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  pressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
-  badge: { color: '#208AEF' },
-  voteBtn: { borderWidth: 1.5, borderColor: '#208AEF', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
-  voteOn: { backgroundColor: '#208AEF' },
+  card: { borderRadius: Radius.card, padding: Spacing.threeHalf, gap: Spacing.twoHalf, backgroundColor: Palette.white },
+  code: { letterSpacing: 6, fontVariant: ['tabular-nums'] },
+  step: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.twoHalf, minHeight: 52,
+    paddingHorizontal: Spacing.three, borderRadius: Radius.control, backgroundColor: Palette.polar,
+  },
+  stepValue: { flexShrink: 1, maxWidth: '50%', textAlign: 'right' },
+  candidate: { borderRadius: Radius.control, padding: Spacing.three, gap: Spacing.twoHalf, backgroundColor: Palette.polar, borderWidth: 1.5, borderColor: 'transparent' },
+  candidateOn: { backgroundColor: Palette.glacierSoft, borderColor: Palette.glacier },
+  candidateMain: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.twoHalf },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  candName: { fontWeight: '500' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.two, marginTop: 2 },
+  wonBadge: { backgroundColor: Palette.red, borderRadius: Radius.chip, paddingHorizontal: 6, paddingVertical: 1 },
+  wonText: { color: Palette.white, fontSize: 12, lineHeight: 16 },
+  votes: { fontSize: 22, lineHeight: 28, fontWeight: '600', color: Palette.slate, fontVariant: ['tabular-nums'] },
+  travel: { marginTop: Spacing.two, gap: Spacing.one },
+  track: { height: 6, borderRadius: 3, backgroundColor: Palette.line },
+  fill: { height: 6, borderRadius: 3, backgroundColor: Palette.glacier },
+  tick: { position: 'absolute', top: -3, width: 2, height: 12, marginLeft: -1, borderRadius: 1, backgroundColor: Palette.ink },
+  travelText: { fontVariant: ['tabular-nums'] },
+  num: { color: Palette.ink, fontWeight: '600' },
+  finalPlace: { gap: Spacing.one },
+  finalName: { fontSize: 20, lineHeight: 28, fontWeight: '500' },
+  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  voteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: Spacing.twoHalf,
+    borderRadius: Radius.chip, backgroundColor: Palette.white, borderWidth: 1, borderColor: Palette.line,
+  },
+  voteOn: { backgroundColor: Palette.glacier, borderColor: Palette.glacier },
+  voteText: { color: Palette.ink, fontWeight: '500' },
   dim: { opacity: 0.4 },
-  gold: { color: '#F5B301' },
-  when: { fontSize: 22, lineHeight: 30 },
   row: { flexDirection: 'row', gap: Spacing.two, justifyContent: 'center' },
   flex: { flex: 1 },
   link: { padding: Spacing.two },
-  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  member: { padding: 14, borderWidth: 1, borderRadius: 12, gap: 2 },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.one },
+  member: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.twoHalf,
+    paddingHorizontal: Spacing.three, paddingVertical: Spacing.twoHalf, borderRadius: Radius.control, backgroundColor: Palette.white,
+  },
+  memberIcon: { marginRight: 2 },
   hint: { textAlign: 'center' },
   footer: { gap: Spacing.three, marginTop: Spacing.three },
   danger: { alignItems: 'center', padding: Spacing.three },

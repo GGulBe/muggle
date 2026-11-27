@@ -1,13 +1,14 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View, type ScrollViewInstance } from 'react-native';
-import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { Check } from 'lucide-react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -21,7 +22,6 @@ type Review = {
   profiles: { nickname: string } | null;
 };
 
-const BLUE = '#208AEF';
 const splitMenu = (m: string | null) => (m ?? '').split(',').map((x) => x.trim()).filter(Boolean);
 
 // 약속 후 후기: 별점 + 먹은 메뉴 체크 + 한 줄 후기. 앱 사용자만 볼 수 있다
@@ -98,7 +98,7 @@ export default function ReviewScreen() {
 
   const chip = (on: boolean) => [
     styles.chip,
-    { borderColor: on ? BLUE : theme.backgroundSelected, backgroundColor: on ? '#208AEF22' : 'transparent' },
+    { borderColor: on ? Palette.glacier : Palette.line, backgroundColor: on ? Palette.glacierSoft : Palette.white },
   ];
   const focusInput = (k: 'menu' | 'body') => {
     setTyping(true);
@@ -119,8 +119,8 @@ export default function ReviewScreen() {
             <Pressable key={n} accessibilityRole="radio" accessibilityState={{ selected: rating === n }} accessibilityLabel={`${n}점`}
               onPress={() => setRating(n)} hitSlop={6}>
               {/* 고를 때마다 별이 튀어 오르게 key로 다시 마운트 */}
-              <Animated.View key={`${n}-${rating >= n}`} entering={rating >= n ? ZoomIn.springify() : undefined}>
-                <ThemedText style={[styles.star, { color: rating >= n ? '#F5B301' : theme.backgroundSelected }]}>★</ThemedText>
+              <Animated.View key={`${n}-${rating >= n}`} entering={rating >= n ? FadeIn.duration(160) : undefined}>
+                <ThemedText style={[styles.star, { color: rating >= n ? Palette.red : Palette.line }]}>★</ThemedText>
               </Animated.View>
             </Pressable>
           ))}
@@ -131,7 +131,8 @@ export default function ReviewScreen() {
           {choices.map((m) => (
             <Animated.View key={m} entering={FadeIn.duration(200)}>
               <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: menus.includes(m) }} onPress={() => toggleMenu(m)} style={chip(menus.includes(m))}>
-                <ThemedText type="small">{menus.includes(m) ? '✓ ' : ''}{m}</ThemedText>
+                {menus.includes(m) && <Check size={16} strokeWidth={2} color={Palette.ink} />}
+                <ThemedText type="small">{m}</ThemedText>
               </Pressable>
             </Animated.View>
           ))}
@@ -147,7 +148,7 @@ export default function ReviewScreen() {
             placeholderTextColor={theme.textSecondary}
             returnKeyType="done"
             accessibilityLabel="먹은 메뉴 추가"
-            style={[styles.input, styles.flex, { color: theme.text, borderColor: theme.textSecondary }]}
+            style={[styles.input, styles.flex, { color: theme.text }]}
           />
           <Button title="추가" variant="secondary" onPress={addMenu} disabled={!newMenu.trim()} />
         </View>
@@ -164,13 +165,13 @@ export default function ReviewScreen() {
           multiline
           maxLength={200}
           accessibilityLabel="한 줄 후기"
-          style={[styles.input, styles.body, { color: theme.text, borderColor: theme.textSecondary }]}
+          style={[styles.input, styles.body, { color: theme.text }]}
         />
 
         {others.length > 0 && <ThemedText type="smallBold">다른 사람들의 후기</ThemedText>}
         {others.map((r, i) => (
           <Animated.View key={`${r.user_id}-${r.created_at}`} entering={FadeInDown.delay(i * 40).duration(250)}
-            style={[styles.review, { borderColor: theme.backgroundSelected }]}>
+            style={styles.review}>
             <ThemedText type="small">
               <ThemedText type="smallBold">{r.profiles?.nickname || '익명'}</ThemedText>
               <ThemedText type="small" style={styles.gold}>  {'★'.repeat(r.rating)}</ThemedText>
@@ -194,13 +195,13 @@ const styles = StyleSheet.create({
   typing: { paddingBottom: 500 },
   stars: { flexDirection: 'row', gap: Spacing.two },
   star: { fontSize: 40, lineHeight: 48 },
-  gold: { color: '#F5B301' },
+  gold: { color: Palette.slate },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.chip, paddingHorizontal: Spacing.twoHalf, paddingVertical: Spacing.two },
   addRow: { flexDirection: 'row', gap: Spacing.two, alignItems: 'center' },
-  input: { height: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 16 },
+  input: { height: 48, borderWidth: 1, borderColor: Palette.line, borderRadius: Radius.control, backgroundColor: Palette.white, paddingHorizontal: Spacing.three, fontSize: 16 },
   body: { height: 96, paddingTop: 12, textAlignVertical: 'top' },
-  review: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 4 },
+  review: { borderRadius: Radius.control, padding: Spacing.three, gap: 4, backgroundColor: Palette.white },
   flex: { flex: 1 },
   panel: { padding: Spacing.three },
 });

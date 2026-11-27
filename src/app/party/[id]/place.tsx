@@ -5,9 +5,10 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
+import { Station } from '@/components/station';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -72,7 +73,10 @@ export default function PlaceScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Animated.View entering={FadeInDown.duration(300)} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
           <ThemedText type="subtitle" style={styles.name}>{info.name}</ThemedText>
-          <ThemedText themeColor="textSecondary">{info.category} · {station}</ThemedText>
+          <View style={styles.meta}>
+            <ThemedText themeColor="textSecondary">{info.category}</ThemedText>
+            {station ? <Station name={station} size="default" /> : null}
+          </View>
           {max && avg && <ThemedText type="small">멤버 이동시간 최대 {max}분 · 평균 {avg}분</ThemedText>}
           <ThemedText type="small">
             {reviews.length ? (
@@ -92,14 +96,14 @@ export default function PlaceScreen() {
           <Button title="길찾기" variant="secondary" style={styles.flex}
             onPress={() => Linking.openURL(`https://map.kakao.com/link/to/${encodeURIComponent(info.name)},${info.lat},${info.lng}`)} />
         </Animated.View>
-        <ThemedText type="small" themeColor="textSecondary">사진·메뉴판·영업시간은 카카오맵에서 볼 수 있어요.</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">사진·메뉴판·영업시간은 카카오맵에서 볼 수 있어요</ThemedText>
 
         {menus.length > 0 && (
           <Animated.View entering={FadeInDown.delay(160).duration(300)} style={styles.section}>
             <ThemedText type="smallBold">다녀온 사람들이 먹은 메뉴</ThemedText>
             <View style={styles.chips}>
               {menus.map((m) => (
-                <View key={m} style={[styles.chip, { borderColor: theme.backgroundSelected }]}>
+                <View key={m} style={styles.chip}>
                   <ThemedText type="small">{m}</ThemedText>
                 </View>
               ))}
@@ -109,7 +113,7 @@ export default function PlaceScreen() {
 
         {reviews.length > 0 && <ThemedText type="smallBold">후기</ThemedText>}
         {reviews.slice(0, 10).map((r, i) => (
-          <Animated.View key={i} entering={FadeInDown.delay(200 + i * 40).duration(250)} style={[styles.review, { borderColor: theme.backgroundSelected }]}>
+          <Animated.View key={i} entering={FadeInDown.delay(200 + i * 40).duration(250)} style={styles.review}>
             <ThemedText type="small">
               <ThemedText type="smallBold">{r.profiles?.nickname || '익명'}</ThemedText>
               <ThemedText type="small" style={styles.gold}>  {'★'.repeat(r.rating)}</ThemedText>
@@ -131,14 +135,15 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: Spacing.four, gap: Spacing.three },
-  card: { borderRadius: 16, padding: Spacing.three, gap: Spacing.one },
+  card: { borderRadius: Radius.card, padding: Spacing.threeHalf, gap: Spacing.one },
   name: { fontSize: 24, lineHeight: 32 },
   row: { flexDirection: 'row', gap: Spacing.two },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.twoHalf },
   flex: { flex: 1 },
   section: { gap: Spacing.two },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  review: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 4 },
-  gold: { color: '#F5B301' },
+  chip: { borderWidth: 1, borderColor: Palette.line, backgroundColor: Palette.white, borderRadius: Radius.chip, paddingHorizontal: Spacing.twoHalf, paddingVertical: 6 },
+  review: { borderRadius: Radius.control, padding: Spacing.three, gap: 4, backgroundColor: Palette.white },
+  gold: { color: Palette.slate },
   panel: { padding: Spacing.three },
 });

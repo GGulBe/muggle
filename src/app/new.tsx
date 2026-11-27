@@ -6,7 +6,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -106,8 +106,8 @@ export default function NewPartyScreen() {
   const chip = (selected: boolean) => [
     styles.chip,
     {
-      borderColor: selected ? '#208AEF' : theme.backgroundSelected,
-      backgroundColor: selected ? '#208AEF22' : 'transparent',
+      borderColor: selected ? Palette.glacier : Palette.line,
+      backgroundColor: selected ? Palette.glacierSoft : Palette.white,
     },
   ];
 
@@ -169,7 +169,7 @@ export default function NewPartyScreen() {
                 }}
                 onBlur={() => setTyping(false)}
                 accessibilityLabel={mode === 'region' ? '동네 검색' : '장소 검색'}
-                style={[styles.input, { color: theme.text, borderColor: theme.textSecondary }]}
+                style={[styles.input, { color: theme.text }]}
               />
               {mode === 'region' &&
                 stations.map((s) => (
@@ -177,7 +177,7 @@ export default function NewPartyScreen() {
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => setStation(s)}
-                      style={[styles.row, { borderColor: theme.backgroundSelected }]}>
+                      style={styles.row}>
                       <ThemedText>{s.name}</ThemedText>
                     </Pressable>
                   </Animated.View>
@@ -188,7 +188,7 @@ export default function NewPartyScreen() {
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => setPlace(p)}
-                      style={[styles.row, { borderColor: theme.backgroundSelected }]}>
+                      style={styles.row}>
                       <ThemedText>{p.name}</ThemedText>
                       <ThemedText type="small" themeColor="textSecondary">
                         {p.category} · {p.stations?.name}
@@ -232,25 +232,27 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.four, gap: Spacing.three },
   typing: { paddingBottom: 600 },
-  card: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 2 },
+  card: { borderWidth: 1.5, borderRadius: Radius.control, padding: Spacing.three, gap: 2 },
   pickedRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   input: {
-    height: 50,
+    height: 48,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
+    borderColor: Palette.line,
+    borderRadius: Radius.control,
+    backgroundColor: Palette.white,
+    paddingHorizontal: Spacing.three,
     fontSize: 16,
   },
-  row: { borderBottomWidth: 1, paddingVertical: 12, gap: 2 },
+  row: { borderBottomWidth: 1, borderColor: Palette.line, paddingVertical: Spacing.twoHalf, gap: 2 },
   chips: { gap: Spacing.two },
   chip: {
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: Radius.chip,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: Spacing.two,
   },
 });

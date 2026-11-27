@@ -1,8 +1,10 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import Animated, { FadeInUp, LinearTransition, ZoomIn, ZoomOut } from 'react-native-reanimated';
+import { SmilePlus } from 'lucide-react-native';
+import Animated, { FadeIn, FadeInUp, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { Palette, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { firstEmoji, type Reaction } from '@/lib/party';
 
@@ -42,13 +44,13 @@ export function ReactionBar({ reactions, me, onToggle }: Props) {
 
   const chip = (on: boolean) => [
     styles.chip,
-    { borderColor: on ? '#208AEF' : theme.backgroundSelected, backgroundColor: on ? '#208AEF22' : 'transparent' },
+    { borderColor: on ? Palette.glacier : Palette.line, backgroundColor: on ? Palette.glacierSoft : Palette.white },
   ];
 
   return (
     <Animated.View layout={LinearTransition} style={styles.row}>
       {[...groups].map(([emoji, g]) => (
-        <Animated.View key={emoji} entering={ZoomIn.springify()} exiting={ZoomOut.duration(150)} layout={LinearTransition}>
+        <Animated.View key={emoji} entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)} layout={LinearTransition}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${emoji} 반응 ${g.n}개${g.mine ? ', 내가 누름' : ''}`}
@@ -56,7 +58,7 @@ export function ReactionBar({ reactions, me, onToggle }: Props) {
             style={({ pressed }) => [...chip(g.mine), pressed && styles.pressed]}>
             <ThemedText type="small">{emoji}</ThemedText>
             {/* 숫자가 바뀔 때마다 살짝 튀어 오르게 key로 다시 마운트 */}
-            <Animated.View key={g.n} entering={ZoomIn.duration(180)}>
+            <Animated.View key={g.n} entering={FadeInUp.duration(160)}>
               <ThemedText type="small" style={g.mine && styles.mineCount}>{g.n}</ThemedText>
             </Animated.View>
           </Pressable>
@@ -68,7 +70,7 @@ export function ReactionBar({ reactions, me, onToggle }: Props) {
         accessibilityLabel="이모지 반응 추가"
         onPress={() => setAdding(true)}
         style={({ pressed }) => [...chip(false), pressed && styles.pressed]}>
-        <ThemedText type="small" themeColor="textSecondary">＋</ThemedText>
+        <SmilePlus size={16} strokeWidth={1.5} color={Palette.muted} />
       </Pressable>
 
       {/* 키보드에 가리지 않게 화면 위쪽에 띄우는 입력창. 키보드의 이모지 탭에서 아무거나 고르면 바로 반응 */}
@@ -76,19 +78,19 @@ export function ReactionBar({ reactions, me, onToggle }: Props) {
         setTimeout(() => input.current?.focus(), 100);
       }} statusBarTranslucent>
         <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="닫기">
-          <Animated.View entering={FadeInUp.springify()} style={[styles.sheet, { backgroundColor: theme.background }]}>
+          <Animated.View entering={FadeInUp.duration(220)} style={styles.sheet}>
             <Pressable>
               <ThemedText type="smallBold">어떤 이모지로 반응할까요?</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">키보드의 이모지 버튼을 눌러 아무거나 골라 주세요.</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">키보드의 이모지 버튼을 눌러 아무거나 골라 주세요</ThemedText>
               <View style={styles.inputRow}>
                 <TextInput
                   ref={input}
                   value={draft}
                   onChangeText={submit}
                   placeholder="이모지"
-                  placeholderTextColor={theme.textSecondary}
+                  placeholderTextColor={theme.muted}
                   accessibilityLabel="반응할 이모지 입력"
-                  style={[styles.input, { color: theme.text, borderColor: '#208AEF' }]}
+                  style={[styles.input, { color: theme.text, borderColor: Palette.glacier }]}
                 />
               </View>
             </Pressable>
@@ -101,11 +103,11 @@ export function ReactionBar({ reactions, me, onToggle }: Props) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, minHeight: 30 },
-  pressed: { transform: [{ scale: 0.92 }] },
-  mineCount: { color: '#208AEF', fontWeight: '600' },
-  backdrop: { flex: 1, backgroundColor: '#0006', paddingTop: 120, paddingHorizontal: 24 },
-  sheet: { borderRadius: 16, padding: 20 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.chip, paddingHorizontal: 10, minHeight: 32 },
+  pressed: { transform: [{ scale: 0.96 }] },
+  mineCount: { color: Palette.ink, fontWeight: '600' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(29,42,51,0.4)', paddingTop: 120, paddingHorizontal: 24 },
+  sheet: { borderRadius: Radius.card, padding: 20, backgroundColor: Palette.white },
   inputRow: { marginTop: 12 },
-  input: { height: 56, borderWidth: 2, borderRadius: 12, paddingHorizontal: 14, fontSize: 28, textAlign: 'center' },
+  input: { height: 56, borderWidth: 1.5, borderRadius: Radius.control, paddingHorizontal: 16, fontSize: 28, textAlign: 'center' },
 });

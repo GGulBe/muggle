@@ -16,7 +16,8 @@ type Props = {
 const SIZE = 260;
 const R = SIZE / 2;
 const SPIN_MS = 4000;
-const COLORS = ['#208AEF', '#F5B301', '#34C759', '#FF6B6B', '#AF52DE', '#FF9500', '#5AC8FA', '#8E8E93'];
+// 빙하색 계열과 흰색을 번갈아 (글자는 잉크색). 빨강은 화살표와 결과에만
+const COLORS = ['#9CC6E0', '#FFFFFF', '#C9E0EE', '#E3EEF5', '#7FB3D3', '#F1F3F4', '#B3D4E8', '#DCE2E6'];
 
 // 위쪽(12시)에서 시계 방향 각도 → 원 위의 점
 const point = (deg: number, r = R) => {
@@ -73,9 +74,9 @@ export function Roulette({ items, winner, playKey, onDone }: Props) {
               : `M ${R} ${R} L ${point(a)} A ${R} ${R} 0 ${seg > 180 ? 1 : 0} 1 ${point(a + seg)} Z`;
             return (
               <G key={it.id}>
-                <Path d={path} fill={COLORS[i % COLORS.length]} stroke="#fff" strokeWidth={2} />
+                <Path d={path} fill={COLORS[i % COLORS.length]} stroke="#DCE2E6" strokeWidth={1} />
                 <G transform={`rotate(${a + seg / 2} ${R} ${R})`}>
-                  <SvgText x={R} y={R * 0.38} fill="#fff" fontSize={14} fontWeight="bold" textAnchor="middle">
+                  <SvgText x={R} y={R * 0.38} fill="#1D2A33" fontSize={14} fontWeight="500" textAnchor="middle">
                     {it.label.length > 9 ? `${it.label.slice(0, 8)}…` : it.label}
                   </SvgText>
                 </G>
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
   pointer: {
     width: 0, height: 0, marginBottom: -14, zIndex: 1,
     borderLeftWidth: 12, borderRightWidth: 12, borderTopWidth: 20,
-    borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#191919',
+    borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#E4002B',
   },
-  result: { fontSize: 22, lineHeight: 30, textAlign: 'center' },
+  result: { fontSize: 22, lineHeight: 30, textAlign: 'center', color: '#E4002B' },
 });

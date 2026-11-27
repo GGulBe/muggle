@@ -1,12 +1,12 @@
 import type { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { LoginScreen } from '@/components/login-screen';
+import { Palette } from '@/constants/theme';
 import { setSessionFromUrl, supabase } from '@/lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
@@ -17,7 +17,6 @@ const handleAuthLink = (url: string | null) => {
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [session, setSession] = useState<Session | null | undefined>(undefined); // undefined = 확인 중
 
   useEffect(() => {
@@ -32,10 +31,17 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={{ ...DefaultTheme, colors: { ...DefaultTheme.colors, background: Palette.polar, card: Palette.polar, text: Palette.ink, primary: Palette.red, border: Palette.line } }}>
       <AnimatedSplashOverlay />
       {session === undefined ? null : session ? (
-        <Stack screenOptions={{ headerBackTitle: '뒤로' }}>
+        <Stack
+          screenOptions={{
+            headerBackTitle: '뒤로',
+            headerShadowVisible: false,
+            headerTintColor: Palette.ink,
+            headerTitleStyle: { fontSize: 17, fontWeight: '500' },
+            contentStyle: { backgroundColor: Palette.polar },
+          }}>
           <Stack.Screen name="index" options={{ title: 'muggle' }} />
           <Stack.Screen name="party/[id]/index" options={{ title: '파티' }} />
           <Stack.Screen name="party/[id]/pin" options={{ title: '출발지 설정' }} />

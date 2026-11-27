@@ -6,14 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDay, localDate, SLOT_LABEL, SLOTS, type Slot } from '@/lib/party';
 import { supabase } from '@/lib/supabase';
 
 const MONTHS = 3; // 이번 달부터 3개월
 const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
-const BLUE = '#208AEF';
 const key = (day: string, slot: Slot) => `${day}|${slot}`;
 
 // 해당 달의 달력 칸: 앞쪽 빈칸(null) + 1일~말일
@@ -122,13 +121,13 @@ export default function DatesScreen() {
                 accessibilityState={{ selected: focused, disabled: past }}
                 accessibilityLabel={`${formatDay(day)}${on.length ? `, ${on.map((s) => SLOT_LABEL[s]).join('·')} 가능` : ''}`}
                 onPress={() => setFocus(day)}
-                style={[styles.cell, styles.day, focused && { borderColor: BLUE, borderWidth: 2 }, on.length > 0 && { backgroundColor: '#208AEF22' }]}>
+                style={[styles.cell, styles.day, on.length > 0 && { backgroundColor: Palette.glacierSoft }, focused && { borderColor: Palette.ink }]}>
                 <ThemedText type="small" style={[past && { opacity: 0.3 }, i % 7 === 0 && styles.sun]}>
                   {Number(day.slice(8))}
                 </ThemedText>
                 <View style={styles.dots}>
                   {SLOTS.map((s) => (
-                    <View key={s} style={[styles.dot, { backgroundColor: picked.has(key(day, s)) ? BLUE : 'transparent' }]} />
+                    <View key={s} style={[styles.dot, { backgroundColor: picked.has(key(day, s)) ? Palette.glacierDeep : 'transparent' }]} />
                   ))}
                 </View>
               </Pressable>
@@ -140,7 +139,7 @@ export default function DatesScreen() {
           <View style={styles.cardHead}>
             <ThemedText type="smallBold">{formatDay(focus)}</ThemedText>
             <Pressable accessibilityRole="button" onPress={() => toggleAllDay(focus)}>
-              <ThemedText type="small" style={{ color: BLUE }}>
+              <ThemedText type="small" style={{ color: Palette.glacierDeep }}>
                 {SLOTS.every((s) => picked.has(key(focus, s))) ? '모두 해제' : '하루 종일 가능'}
               </ThemedText>
             </Pressable>
@@ -155,8 +154,8 @@ export default function DatesScreen() {
                   accessibilityState={{ checked: on }}
                   accessibilityLabel={`${formatDay(focus)} ${SLOT_LABEL[slot]}`}
                   onPress={() => toggle(key(focus, slot))}
-                  style={[styles.slot, { borderColor: on ? BLUE : theme.backgroundSelected, backgroundColor: on ? BLUE : 'transparent' }]}>
-                  <ThemedText style={{ color: on ? '#fff' : theme.text }}>{SLOT_LABEL[slot]}</ThemedText>
+                  style={[styles.slot, { borderColor: on ? Palette.glacier : Palette.line, backgroundColor: on ? Palette.glacier : Palette.white }]}>
+                  <ThemedText style={{ color: theme.text, fontWeight: on ? '600' : '400' }}>{SLOT_LABEL[slot]}</ThemedText>
                 </Pressable>
               );
             })}
@@ -179,13 +178,13 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: `${100 / 7}%`, alignItems: 'center' },
   weekHead: { textAlign: 'center', paddingBottom: Spacing.one },
-  sun: { color: '#d93025' },
-  day: { height: 52, justifyContent: 'center', gap: 4, borderRadius: 10, borderWidth: 2, borderColor: 'transparent' },
-  dots: { flexDirection: 'row', gap: 3 },
-  dot: { width: 5, height: 5, borderRadius: 3 },
-  card: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
+  sun: { color: Palette.red },
+  day: { height: 52, justifyContent: 'center', gap: 4, borderRadius: Radius.control, borderWidth: 1.5, borderColor: 'transparent' },
+  dots: { flexDirection: 'row', gap: 4 },
+  dot: { width: 4, height: 4, borderRadius: 2 },
+  card: { borderRadius: Radius.card, padding: Spacing.threeHalf, gap: Spacing.twoHalf },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   slots: { flexDirection: 'row', gap: Spacing.two },
-  slot: { flex: 1, height: 48, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  slot: { flex: 1, height: 48, borderWidth: 1, borderRadius: Radius.control, alignItems: 'center', justifyContent: 'center' },
   panel: { padding: Spacing.three },
 });

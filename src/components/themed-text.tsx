@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { Fonts, Palette, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -11,34 +11,38 @@ export type ThemedTextProps = TextProps & {
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
 
-  return <Text style={[{ color: theme[themeColor ?? 'text'] }, styles[type], style]} {...rest} />;
+  // 제목(title·subtitle)은 슬레이트, 나머지는 테마 글자색. themeColor를 주면 그 색
+  return <Text style={[{ color: theme[themeColor ?? 'text'] }, styles[type], themeColor && { color: theme[themeColor] }, style]} {...rest} />;
 }
 
 const styles = StyleSheet.create({
+  // 위계는 굵기보다 크기·색으로. 굵기는 400·500, 강조만 600
   small: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 500,
+    fontWeight: 400,
   },
   smallBold: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
+    fontWeight: 400,
   },
   title: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: 600,
-    lineHeight: 52,
+    lineHeight: 44,
+    color: Palette.slate,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
+    fontSize: 28,
+    lineHeight: 36,
     fontWeight: 600,
+    color: Palette.slate,
   },
   link: {
     lineHeight: 30,
@@ -47,7 +51,7 @@ const styles = StyleSheet.create({
   linkPrimary: {
     lineHeight: 30,
     fontSize: 14,
-    color: '#3c87f7',
+    color: Palette.slate,
   },
   code: {
     fontFamily: Fonts.mono,

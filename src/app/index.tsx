@@ -1,20 +1,23 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
+import { ChevronRight } from 'lucide-react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { STATUS_LABEL, type Party } from '@/lib/party';
+import { formatDay, SLOT_LABEL, STATUS_LABEL, type Party, type Slot } from '@/lib/party';
 import { supabase } from '@/lib/supabase';
+
+type Row = Party & { final_date: string | null; final_slot: Slot | null; final_place: { name: string } | null };
 
 export default function HomeScreen() {
   const theme = useTheme();
   const [nickname, setNickname] = useState('');
-  const [parties, setParties] = useState<Party[]>([]);
+  const [parties, setParties] = useState<Row[]>([]);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState<'join' | null>(null);
 
@@ -29,9 +32,9 @@ export default function HomeScreen() {
       // RLS가 내가 속한 파티만 돌려준다
       supabase
         .from('parties')
-        .select('id, code, host_id, status, created_at')
+        .select('id, code, host_id, status, created_at, final_date, final_slot, final_place:places!final_place_id(name)')
         .order('created_at', { ascending: false })
-        .then(({ data }) => setParties(data ?? []));
+        .then(({ data }) => setParties((data as unknown as Row[] | null) ?? []));
     }, []),
   );
 
@@ -52,22 +55,24 @@ export default function HomeScreen() {
         keyExtractor={(p) => p.id}
         ListHeaderComponent={
           <View style={styles.header}>
-            <ThemedText type="subtitle">{nickname ? `${nickname}님,` : '안녕하세요'}</ThemedText>
-            <ThemedText themeColor="textSecondary">어디서 만날지 정해 볼까요?</ThemedText>
+            <View style={styles.titleBlock}>
+              <ThemedText type="subtitle">약속 정하기</ThemedText>
+              <ThemedText themeColor="textSecondary">출발지만 넣으면 모두에게 공평한 곳을 찾아요</ThemedText>
+            </View>
             <Button title="새 파티 만들기" onPress={() => router.push('/new')} />
             <View style={styles.joinRow}>
               <TextInput
                 value={code}
                 onChangeText={(t) => setCode(t.toUpperCase())}
                 placeholder="초대 코드 6자리"
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={theme.muted}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 maxLength={6}
                 accessibilityLabel="초대 코드"
                 style={[
                   styles.input,
-                  { color: theme.text, borderColor: theme.textSecondary, letterSpacing: code ? 4 : 0 },
+                  { color: theme.text, letterSpacing: code ? 4 : 0 },
                 ]}
               />
               <Button
@@ -78,28 +83,40 @@ export default function HomeScreen() {
                 busy={busy === 'join'}
               />
             </View>
-            {parties.length > 0 && <ThemedText type="smallBold">내 파티</ThemedText>}
+            {parties.length > 0 && <ThemedText type="smallBold" themeColor="textSecondary" style={styles.section}>내 파티 {parties.length}</ThemedText>}
           </View>
         }
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(index * 50).duration(300)} layout={LinearTransition}>
+          <Animated.View entering={FadeInDown.delay(Math.min(index, 5) * 50).duration(300)}>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={`파티 ${item.code}, ${STATUS_LABEL[item.status]}`}
               onPress={() => router.push(`/party/${item.id}`)}
-              style={({ pressed }) => [styles.row, { borderColor: theme.backgroundSelected }, pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }]}>
-              <ThemedText>{item.code}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {STATUS_LABEL[item.status]}
-              </ThemedText>
+              style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+              <View style={styles.rowText}>
+                <ThemedText style={styles.code}>{item.code}</ThemedText>
+                {item.status === 'closed' && item.final_date && item.final_slot ? (
+                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                    {formatDay(item.final_date)} {SLOT_LABEL[item.final_slot]}{item.final_place ? ` · ${item.final_place.name}` : ''}
+                  </ThemedText>
+                ) : null}
+              </View>
+              <View style={[styles.status, item.status === 'voting' && styles.statusVoting, item.status === 'closed' && styles.statusClosed]}>
+                <ThemedText type="small" style={[styles.statusText, item.status === 'voting' && { color: Palette.glacierDeep }, item.status === 'closed' && { color: Palette.white }]}>
+                  {STATUS_LABEL[item.status]}
+                </ThemedText>
+              </View>
+              <ChevronRight size={18} strokeWidth={1.5} color={Palette.muted} />
             </Pressable>
           </Animated.View>
         )}
         ListFooterComponent={
-          <Pressable accessibilityRole="button" onPress={() => supabase.auth.signOut()} style={styles.logout}>
-            <ThemedText type="small" themeColor="textSecondary">
-              로그아웃
-            </ThemedText>
-          </Pressable>
+          <View style={styles.footer}>
+            {nickname ? <ThemedText type="small" themeColor="muted">{nickname}</ThemedText> : null}
+            <Pressable accessibilityRole="button" onPress={() => supabase.auth.signOut()} hitSlop={12}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.underline}>로그아웃</ThemedText>
+            </Pressable>
+          </View>
         }
       />
     </ThemedView>
@@ -118,11 +135,25 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.four, gap: Spacing.two },
   header: { gap: Spacing.three, marginBottom: Spacing.two },
+  titleBlock: { gap: Spacing.one, marginTop: Spacing.two, marginBottom: Spacing.two },
+  section: { marginTop: Spacing.four },
   joinRow: { flexDirection: 'row', gap: Spacing.two },
-  input: { flex: 1, height: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 18 },
-  row: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: 16, borderWidth: 1, borderRadius: 12,
+  input: {
+    flex: 1, height: 48, borderWidth: 1, borderColor: Palette.line, borderRadius: Radius.control,
+    backgroundColor: Palette.white, paddingHorizontal: Spacing.three, fontSize: 16,
   },
-  logout: { alignItems: 'center', padding: Spacing.four },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.twoHalf, minHeight: 64,
+    paddingHorizontal: Spacing.three, paddingVertical: Spacing.twoHalf,
+    backgroundColor: Palette.white, borderRadius: Radius.control,
+  },
+  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  rowText: { flex: 1, gap: 2 },
+  code: { fontWeight: '500', letterSpacing: 1, fontVariant: ['tabular-nums'] },
+  status: { borderRadius: Radius.chip, paddingHorizontal: Spacing.two, paddingVertical: 2, backgroundColor: Palette.polar },
+  statusVoting: { backgroundColor: Palette.glacierSoft },
+  statusClosed: { backgroundColor: Palette.red },
+  statusText: { color: Palette.secondary },
+  footer: { alignItems: 'center', gap: Spacing.one, padding: Spacing.five },
+  underline: { textDecorationLine: 'underline' },
 });

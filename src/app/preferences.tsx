@@ -2,11 +2,12 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ban, Heart } from 'lucide-react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -62,18 +63,21 @@ export default function PreferencesScreen() {
 
   const chip = (key: string, label: string) => {
     const v = prefs?.get(key);
-    const color = v === 'like' ? '#208AEF' : v === 'dislike' ? '#d93025' : theme.backgroundSelected;
+    const color = v === 'like' ? Palette.glacier : v === 'dislike' ? Palette.red : Palette.line;
     return (
       <Pressable
         key={key}
         accessibilityRole="button"
         accessibilityLabel={`${label} ${v === 'like' ? '좋아요' : v === 'dislike' ? '싫어요' : '상관없음'}`}
         onPress={() => cycle(key)}
-        style={[styles.chip, { borderColor: color, backgroundColor: v ? `${color}22` : 'transparent' }]}>
-        <ThemedText type="small">
-          {v === 'like' ? '♥ ' : v === 'dislike' ? '✕ ' : ''}
-          {label}
-        </ThemedText>
+        style={({ pressed }) => [
+          styles.chip,
+          { borderColor: color, backgroundColor: v === 'like' ? Palette.glacierSoft : v === 'dislike' ? '#FDEBEE' : Palette.white },
+          pressed && { transform: [{ scale: 0.96 }] },
+        ]}>
+        {v === 'like' && <Heart size={16} strokeWidth={1.5} color={Palette.glacierDeep} fill={Palette.glacier} />}
+        {v === 'dislike' && <Ban size={16} strokeWidth={1.5} color={Palette.red} />}
+        <ThemedText type="small">{label}</ThemedText>
       </Pressable>
     );
   };
@@ -105,8 +109,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: Spacing.four, gap: Spacing.three },
-  notice: { borderRadius: 12, padding: Spacing.three, gap: 4 },
+  notice: { borderRadius: Radius.card, padding: Spacing.three, gap: 4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.chip, paddingHorizontal: Spacing.twoHalf, paddingVertical: Spacing.two },
   panel: { padding: Spacing.three },
 });

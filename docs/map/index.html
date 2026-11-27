@@ -19,7 +19,7 @@
     #pin { position: absolute; left: 50%; top: 50%; z-index: 5; width: 36px; height: 48px;
            margin: -48px 0 0 -18px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.3)); }
     #map.moving + #pin { transform: translateY(-8px); transition: transform .1s; }
-    .who { background: #fff; border: 1px solid #208AEF; color: #191919; border-radius: 12px; padding: 4px 8px;
+    .who { background: #fff; border: 1px solid #9CC6E0; color: #1D2A33; border-radius: 12px; padding: 4px 8px;
            font-size: 12px; white-space: nowrap; }
   </style>
 </head>
@@ -27,7 +27,7 @@
   <div id="search"><input id="q" type="search" placeholder="장소·주소 검색 (예: 강남역)" enterkeyhint="search"></div>
   <div id="results"></div>
   <div id="map"></div>
-  <svg id="pin" viewBox="0 0 36 48" aria-hidden="true"><path d="M18 0C8 0 0 8 0 18c0 13 18 30 18 30s18-17 18-30C36 8 28 0 18 0z" fill="#208AEF"/><circle cx="18" cy="18" r="7" fill="#fff"/></svg>
+  <svg id="pin" viewBox="0 0 36 48" aria-hidden="true"><path d="M18 0C8 0 0 8 0 18c0 13 18 30 18 30s18-17 18-30C36 8 28 0 18 0z" fill="#E4002B"/><circle cx="18" cy="18" r="7" fill="#fff"/></svg>
   <script>
     // 앱(WebView)이 ?key=<카카오 JS 키>&lat=&lng= 로 연다. 지도가 멈출 때마다 가운데 위치를 postMessage로 앱에 알린다.
     // 앱 → 지도: window.setCenter(lat, lng), window.setOthers([{lat, lng, name}])

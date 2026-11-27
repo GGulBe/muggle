@@ -15,7 +15,7 @@ export default function JoinScreen() {
 
   useEffect(() => {
     supabase.rpc('join_party', { p_code: code }).then(({ data, error: e }) => {
-      if (e) setError(e.message.includes('not found') ? '코드에 맞는 파티가 없어요.' : e.message);
+      if (e) setError(e.message.includes('not found') ? '코드에 맞는 파티가 없어요' : e.message);
       else router.replace({ pathname: '/party/[id]', params: { id: data, welcome: 'joined' } });
     });
   }, [code]);
