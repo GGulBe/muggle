@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="robots" content="noindex">
+  <title>muggle 지도</title>
+  <style>
+    html, body, #map { margin: 0; width: 100%; height: 100%; font-family: -apple-system, system-ui, sans-serif; }
+    #search { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 10; }
+    #q { width: 100%; box-sizing: border-box; font-size: 16px; padding: 12px 14px; border: 1px solid #d0d0d0;
+         border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+    #results { position: absolute; top: 64px; left: 12px; right: 12px; z-index: 10; background: #fff;
+               border-radius: 12px; max-height: 45%; overflow: auto; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    #results:empty { display: none; }
+    .r { padding: 12px 14px; border-bottom: 1px solid #eee; font-size: 15px; }
+    .r small { display: block; color: #60646C; margin-top: 2px; }
+    .who { background: #fff; border: 1px solid #208AEF; color: #191919; border-radius: 12px; padding: 4px 8px;
+           font-size: 12px; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="search"><input id="q" type="search" placeholder="장소·주소 검색 (예: 강남역)" enterkeyhint="search"></div>
+  <div id="results"></div>
+  <div id="map"></div>
+  <script>
+    // 앱(WebView)이 ?key=<카카오 JS 키>&lat=&lng= 로 연다. 핀을 고르면 postMessage로 앱에 알린다.
+    // 앱 → 지도: window.setCenter(lat, lng), window.setOthers([{lat, lng, name}])
+    var p = new URLSearchParams(location.search);
+    var lat = parseFloat(p.get('lat')) || 37.5665, lng = parseFloat(p.get('lng')) || 126.9780; // 기본: 서울시청
+    function post(m) { if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(m)); }
+    function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+
+    var sdk = document.createElement('script');
+    sdk.src = 'https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&libraries=services&appkey=' +
+      encodeURIComponent(p.get('key') || '');
+    sdk.onerror = function () { post({ type: 'error', message: '카카오맵을 불러오지 못했습니다 (JS 키·도메인 확인)' }); };
+    sdk.onload = function () { kakao.maps.load(init); };
+    document.head.appendChild(sdk);
+
+    function init() {
+      var map = new kakao.maps.Map(document.getElementById('map'), { center: new kakao.maps.LatLng(lat, lng), level: 4 });
+      var marker = new kakao.maps.Marker({ position: map.getCenter(), map: map, draggable: true });
+      var geocoder = new kakao.maps.services.Geocoder();
+      var places = new kakao.maps.services.Places();
+      var others = [];
+      var results = document.getElementById('results');
+
+      function pick(ll, label) {
+        marker.setPosition(ll);
+        geocoder.coord2Address(ll.getLng(), ll.getLat(), function (r, status) {
+          var addr = status === kakao.maps.services.Status.OK && r[0]
+            ? (r[0].road_address || r[0].address).address_name : '';
+          post({ type: 'pin', lat: ll.getLat(), lng: ll.getLng(), address: label || addr });
+        });
+      }
+      kakao.maps.event.addListener(map, 'click', function (e) { results.innerHTML = ''; pick(e.latLng); });
+      kakao.maps.event.addListener(marker, 'dragend', function () { pick(marker.getPosition()); });
+
+      window.setCenter = function (a, b) { var ll = new kakao.maps.LatLng(a, b); map.setCenter(ll); pick(ll); };
+      window.setOthers = function (list) {
+        others.forEach(function (o) { o.setMap(null); });
+        others = list.map(function (m) {
+          return new kakao.maps.CustomOverlay({ map: map, position: new kakao.maps.LatLng(m.lat, m.lng),
+            content: '<div class="who">' + esc(m.name) + '</div>', yAnchor: 1.6 });
+        });
+      };
+
+      document.getElementById('q').addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' || !this.value.trim()) return;
+        this.blur();
+        places.keywordSearch(this.value.trim(), function (data, status) {
+          results.innerHTML = '';
+          if (status !== kakao.maps.services.Status.OK) {
+            results.innerHTML = '<div class="r">검색 결과가 없어요</div>';
+            return;
+          }
+          data.slice(0, 8).forEach(function (d) {
+            var row = document.createElement('div');
+            row.className = 'r';
+            row.innerHTML = esc(d.place_name) + '<small>' + esc(d.road_address_name || d.address_name) + '</small>';
+            row.onclick = function () {
+              results.innerHTML = '';
+              var ll = new kakao.maps.LatLng(+d.y, +d.x);
+              map.setCenter(ll);
+              pick(ll, d.place_name);
+            };
+            results.appendChild(row);
+          });
+        }, { location: map.getCenter() });
+      });
+
+      post({ type: 'ready' });
+    }
+  </script>
+</body>
+</html>
