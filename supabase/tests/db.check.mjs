@@ -11,7 +11,7 @@ await db.exec(`
     raw_user_meta_data jsonb, created_at timestamptz, updated_at timestamptz);
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  create role anon; create role authenticated;
+  create role anon; create role authenticated; create role service_role bypassrls;
   grant usage on schema public, auth to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
   -- 최근 Supabase처럼 새 테이블·함수에 기본 권한을 주지 않는다 (마이그레이션이 직접 grant 해야 통과)
@@ -108,6 +108,13 @@ await fails(1, 'select delete_party($1)', [created.id], /host only/);
 await fails(2, 'select leave_party($1)', [P1], /already started/); // P1은 위에서 투표 단계
 await as(8, 'select delete_party($1)', [created.id]);
 assert.equal(await count(`select count(*)::int n from party_members where party_id = '${created.id}'`), 0);
+
+// 추천 함수(service_role)가 읽고 쓰는 범위
+await db.exec(`set role service_role;
+  select 1 from parties, party_members, preferences, stations, station_edges, places, reviews limit 1;
+  insert into candidates select '${P1}', 99, id, 1, 1, 1 from places limit 1 on conflict do nothing;
+  update parties set status = status where id = '${P1}';
+  reset role;`);
 
 console.log('sql check: ok');
 

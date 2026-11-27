@@ -102,7 +102,8 @@ export function recommend(input: {
   for (const s of scored) {
     if (out.length === CFG.top) break;
     const n = perStation.get(s.p.station_id) ?? 0;
-    if (n >= CFG.perStation) continue;
+    // 역당 제한은 후보가 한 동네에 몰리지 않게 하려는 것. 동네를 고정했으면 적용하지 않는다
+    if (!fixedStationId && n >= CFG.perStation) continue;
     perStation.set(s.p.station_id, n + 1);
     out.push(s.c);
   }

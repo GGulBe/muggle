@@ -40,6 +40,9 @@ assert.equal(r.filter((c) => crowded.find((p) => p.id === c.place_id)!.station_i
 // 4) 지역 고정: C 반경 1km만, 별점 높은 순
 r = recommend({ members, stations, edges, places: [...places, at(7, 'C', '고기', 5)], prefs: [], fixedStationId: 'C' });
 assert.deepEqual(r.map((c) => c.place_id), [7, 3]);
+// 지역 고정에서는 역당 2곳 제한 없음 (같은 동네 4곳 모두)
+r = recommend({ members, stations, edges, places: [at(3, 'C', '한식'), at(7, 'C', '고기'), at(8, 'C', '중식'), at(9, 'C', '양식')], prefs: [], fixedStationId: 'C' });
+assert.equal(r.length, 4);
 
 // 5) 자차 멤버는 더 짧은 쪽 사용
 const withCar = recommend({ members: [{ ...members[0], has_car: true }, members[1]], stations, edges, places, prefs: [] });

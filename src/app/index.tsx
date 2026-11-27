@@ -15,7 +15,7 @@ export default function HomeScreen() {
   const [nickname, setNickname] = useState('');
   const [parties, setParties] = useState<Party[]>([]);
   const [code, setCode] = useState('');
-  const [busy, setBusy] = useState<'create' | 'join' | null>(null);
+  const [busy, setBusy] = useState<'join' | null>(null);
 
   // 화면에 돌아올 때마다 새로 불러온다 (파티 화면에서 돌아온 경우 등)
   useFocusEffect(
@@ -33,14 +33,6 @@ export default function HomeScreen() {
         .then(({ data }) => setParties(data ?? []));
     }, []),
   );
-
-  const createParty = async () => {
-    setBusy('create');
-    const { data, error } = await supabase.rpc('create_party');
-    setBusy(null);
-    if (error) return Alert.alert('파티를 만들지 못했어요', error.message);
-    router.push(`/party/${data.id}`);
-  };
 
   const joinParty = async () => {
     setBusy('join');
@@ -61,7 +53,7 @@ export default function HomeScreen() {
           <View style={styles.header}>
             <ThemedText type="subtitle">{nickname ? `${nickname}님,` : '안녕하세요'}</ThemedText>
             <ThemedText themeColor="textSecondary">어디서 만날지 정해 볼까요?</ThemedText>
-            <Button title="새 파티 만들기" onPress={createParty} busy={busy === 'create'} />
+            <Button title="새 파티 만들기" onPress={() => router.push('/new')} />
             <View style={styles.joinRow}>
               <TextInput
                 value={code}
