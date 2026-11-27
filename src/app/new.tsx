@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, type ScrollViewInstance } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
@@ -31,6 +31,9 @@ export default function NewPartyScreen() {
   const [radius, setRadius] = useState(1);
   const [busy, setBusy] = useState(false);
   const latest = useRef(0); // 늦게 도착한 이전 검색 결과는 버린다
+  const scroll = useRef<ScrollViewInstance>(null);
+  const inputY = useRef(0);
+  const [typing, setTyping] = useState(false);
 
   const search = async (text: string, m: Mode = mode) => {
     setQuery(text);
@@ -88,7 +91,7 @@ export default function NewPartyScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scroll} contentContainerStyle={[styles.content, typing && styles.typing]} keyboardShouldPersistTaps="handled">
         <ThemedText type="smallBold">어디서 만날지 정했나요?</ThemedText>
         {MODES.map((m) => (
           <Pressable
@@ -120,6 +123,13 @@ export default function NewPartyScreen() {
                 placeholder={mode === 'region' ? '동네·역 이름 검색 (예: 성수)' : '식당 이름·종류·동네 검색'}
                 placeholderTextColor={theme.textSecondary}
                 autoCorrect={false}
+                // 키보드에 결과가 가리지 않게: 아래 여백을 두고 검색창을 맨 위로 올린다
+                onLayout={(e) => (inputY.current = e.nativeEvent.layout.y)}
+                onFocus={() => {
+                  setTyping(true);
+                  setTimeout(() => scroll.current?.scrollTo({ y: inputY.current - Spacing.three }), 100);
+                }}
+                onBlur={() => setTyping(false)}
                 accessibilityLabel={mode === 'region' ? '동네 검색' : '장소 검색'}
                 style={[styles.input, { color: theme.text, borderColor: theme.textSecondary }]}
               />
@@ -166,6 +176,7 @@ export default function NewPartyScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.four, gap: Spacing.three },
+  typing: { paddingBottom: 600 },
   card: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 2 },
   pickedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   input: { height: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 16 },
