@@ -36,6 +36,9 @@ npx supabase functions deploy recommend
    2. 앱 > 일반 > 비즈니스 정보 > **개인 개발자 비즈 앱** 전환 (사업자등록번호 불필요, 카카오비즈니스 통합 서비스 약관 동의)
    3. 카카오 로그인 > 동의항목 > 개인정보 탭 > **카카오계정(이메일)** 설정 > **선택 동의** 저장
 
+7. **지도 (2단계)**: 앱 > 플랫폼 키 > **JavaScript 키** 복사 → 같은 키 설정의 JavaScript SDK 도메인에 `https://ggulbe.github.io` 등록
+   → `.env.local`의 `EXPO_PUBLIC_KAKAO_JS_KEY`에 입력 (공개 키, 등록 도메인에서만 동작). 지도 페이지는 `docs/map/index.html`
+
 **Supabase Dashboard**
 1. Authentication > Sign In / Providers > Kakao: Enabled, Client ID·Client Secret 입력
 2. 같은 화면에서 **Allow users without an email** 켜기
