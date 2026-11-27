@@ -139,7 +139,7 @@ export default function PartyScreen() {
   if (!party) return <ThemedView style={styles.container} />;
 
   const fixedLabel =
-    party.fixed_mode === 'region' ? `동네 고정: ${party.fixed_station?.name}`
+    party.fixed_mode === 'region' ? `동네 고정: ${party.fixed_station?.name} ${party.fixed_radius_km}km`
     : party.fixed_mode === 'place' ? `장소 고정: ${party.fixed_place?.name}`
     : null;
   const when = party.final_date && party.final_slot

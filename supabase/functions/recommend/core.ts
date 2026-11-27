@@ -66,8 +66,9 @@ export function recommend(input: {
   members: Member[]; stations: Station[]; edges: Edge[]; places: Place[];
   prefs: Pref[];                     // 전원의 선호 (멤버 구분 불필요: 개수만 센다)
   fixedStationId?: string | null;    // 지역 고정 모드
+  fixedRadiusKm?: number;            // 지역 고정 반경 (기본 CFG.fixedRadiusKm)
 }): Candidate[] {
-  const { members, stations, edges, prefs, fixedStationId } = input;
+  const { members, stations, edges, prefs, fixedStationId, fixedRadiusKm = CFG.fixedRadiusKm } = input;
   const adj = new Map<string, [string, number][]>();
   for (const e of edges) {
     adj.set(e.from_id, [...(adj.get(e.from_id) ?? []), [e.to_id, e.minutes]]);
@@ -77,7 +78,7 @@ export function recommend(input: {
   let places = input.places;
   if (fixedStationId) {
     const c = stations.find((s) => s.id === fixedStationId)!;
-    places = places.filter((p) => km(c, p) <= CFG.fixedRadiusKm);
+    places = places.filter((p) => km(c, p) <= fixedRadiusKm);
   }
 
   const count = (kind: Pref['kind'], p: Place) =>

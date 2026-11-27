@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
     }),
     prefs: prefs ?? [],
     fixedStationId: party.fixed_mode === 'region' ? party.fixed_station_id : null,
+    fixedRadiusKm: party.fixed_radius_km,
   });
   if (result.length === 0) return fail(422, 'no places match');
 

@@ -96,6 +96,10 @@ assert.equal(await count(`select count(*)::int n from candidates where party_id 
 // 파티 생성·참여·인원 제한
 const created = (await as(8, 'select * from create_party()'))[0];
 assert.match(created.code, /^[2-9A-HJ-NP-Z]{6}$/);
+assert.equal(created.fixed_radius_km, 1);
+const region = (await as(8, "select * from create_party('region', 'gangnam', null, 3)"))[0];
+assert.equal(region.fixed_radius_km, 3);
+await assert.rejects(as(8, "select * from create_party('region', 'gangnam', null, 50)"));
 for (const n of [1, 2, 3, 4, 5, 6, 7]) await as(n, 'select join_party($1)', [created.code.toLowerCase()]);
 await db.exec(`insert into auth.users (id) values ('00000000-0000-0000-0000-000000000009')`);
 await fails(9, 'select join_party($1)', [created.code], /full/);

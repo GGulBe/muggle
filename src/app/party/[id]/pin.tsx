@@ -98,7 +98,7 @@ export default function PinScreen() {
         renderLoading={() => <ActivityIndicator style={StyleSheet.absoluteFill} />}
       />
       <SafeAreaView edges={['bottom']} style={styles.panel}>
-        <ThemedText numberOfLines={1}>{pin ? pin.address || '선택한 위치' : '지도를 눌러 출발지를 골라 주세요'}</ThemedText>
+        <ThemedText numberOfLines={1}>{pin ? pin.address || '선택한 위치' : '지도를 움직여 가운데 핀을 출발지에 맞춰 주세요'}</ThemedText>
         <View style={styles.buttons}>
           <Button title="현재 위치" variant="secondary" onPress={useMyLocation} busy={locating} style={styles.flex} />
           <Button title="이 위치로 저장" onPress={save} disabled={!pin} busy={saving} style={styles.flex} />

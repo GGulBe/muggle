@@ -15,6 +15,10 @@
     #results:empty { display: none; }
     .r { padding: 12px 14px; border-bottom: 1px solid #eee; font-size: 15px; }
     .r small { display: block; color: #60646C; margin-top: 2px; }
+    /* 지도 가운데 고정 핀: 끝이 정확히 중심을 가리킨다. 지도를 움직여 위치를 고른다 */
+    #pin { position: absolute; left: 50%; top: 50%; z-index: 5; width: 36px; height: 48px;
+           margin: -48px 0 0 -18px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.3)); }
+    #map.moving + #pin { transform: translateY(-8px); transition: transform .1s; }
     .who { background: #fff; border: 1px solid #208AEF; color: #191919; border-radius: 12px; padding: 4px 8px;
            font-size: 12px; white-space: nowrap; }
   </style>
@@ -23,8 +27,9 @@
   <div id="search"><input id="q" type="search" placeholder="장소·주소 검색 (예: 강남역)" enterkeyhint="search"></div>
   <div id="results"></div>
   <div id="map"></div>
+  <svg id="pin" viewBox="0 0 36 48" aria-hidden="true"><path d="M18 0C8 0 0 8 0 18c0 13 18 30 18 30s18-17 18-30C36 8 28 0 18 0z" fill="#208AEF"/><circle cx="18" cy="18" r="7" fill="#fff"/></svg>
   <script>
-    // 앱(WebView)이 ?key=<카카오 JS 키>&lat=&lng= 로 연다. 핀을 고르면 postMessage로 앱에 알린다.
+    // 앱(WebView)이 ?key=<카카오 JS 키>&lat=&lng= 로 연다. 지도가 멈출 때마다 가운데 위치를 postMessage로 앱에 알린다.
     // 앱 → 지도: window.setCenter(lat, lng), window.setOthers([{lat, lng, name}])
     var p = new URLSearchParams(location.search);
     var lat = parseFloat(p.get('lat')) || 37.5665, lng = parseFloat(p.get('lng')) || 126.9780; // 기본: 서울시청
@@ -40,24 +45,28 @@
 
     function init() {
       var map = new kakao.maps.Map(document.getElementById('map'), { center: new kakao.maps.LatLng(lat, lng), level: 4 });
-      var marker = new kakao.maps.Marker({ position: map.getCenter(), map: map, draggable: true });
       var geocoder = new kakao.maps.services.Geocoder();
       var places = new kakao.maps.services.Places();
       var others = [];
       var results = document.getElementById('results');
+      var mapEl = document.getElementById('map');
+      var label = null; // 검색 결과로 이동했으면 그 장소 이름을 주소 대신 보여준다
 
-      function pick(ll, label) {
-        marker.setPosition(ll);
+      function pick() {
+        var ll = map.getCenter(), name = label;
+        label = null;
         geocoder.coord2Address(ll.getLng(), ll.getLat(), function (r, status) {
           var addr = status === kakao.maps.services.Status.OK && r[0]
             ? (r[0].road_address || r[0].address).address_name : '';
-          post({ type: 'pin', lat: ll.getLat(), lng: ll.getLng(), address: label || addr });
+          post({ type: 'pin', lat: ll.getLat(), lng: ll.getLng(), address: name || addr });
         });
       }
-      kakao.maps.event.addListener(map, 'click', function (e) { results.innerHTML = ''; pick(e.latLng); });
-      kakao.maps.event.addListener(marker, 'dragend', function () { pick(marker.getPosition()); });
+      kakao.maps.event.addListener(map, 'dragstart', function () { mapEl.classList.add('moving'); results.innerHTML = ''; label = null; });
+      kakao.maps.event.addListener(map, 'dragend', function () { mapEl.classList.remove('moving'); });
+      kakao.maps.event.addListener(map, 'idle', pick);
+      kakao.maps.event.addListener(map, 'click', function (e) { results.innerHTML = ''; map.panTo(e.latLng); });
 
-      window.setCenter = function (a, b) { var ll = new kakao.maps.LatLng(a, b); map.setCenter(ll); pick(ll); };
+      window.setCenter = function (a, b) { map.setCenter(new kakao.maps.LatLng(a, b)); };
       window.setOthers = function (list) {
         others.forEach(function (o) { o.setMap(null); });
         others = list.map(function (m) {
@@ -81,9 +90,8 @@
             row.innerHTML = esc(d.place_name) + '<small>' + esc(d.road_address_name || d.address_name) + '</small>';
             row.onclick = function () {
               results.innerHTML = '';
-              var ll = new kakao.maps.LatLng(+d.y, +d.x);
-              map.setCenter(ll);
-              pick(ll, d.place_name);
+              label = d.place_name;
+              map.setCenter(new kakao.maps.LatLng(+d.y, +d.x));
             };
             results.appendChild(row);
           });

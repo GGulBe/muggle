@@ -14,6 +14,7 @@ export type Party = {
 export type PartyDetail = Party & {
   round: number;
   fixed_mode: 'none' | 'region' | 'place';
+  fixed_radius_km: number;
   final_date: string | null;
   final_slot: Slot | null;
   fixed_station: { name: string } | null;
@@ -22,7 +23,7 @@ export type PartyDetail = Party & {
 };
 
 export const PARTY_DETAIL_SELECT =
-  'id, code, host_id, status, created_at, round, fixed_mode, final_date, final_slot,' +
+  'id, code, host_id, status, created_at, round, fixed_mode, fixed_radius_km, final_date, final_slot,' +
   ' fixed_station:stations!fixed_station_id(name), fixed_place:places!fixed_place_id(name),' +
   ' final_place:places!final_place_id(name)';
 

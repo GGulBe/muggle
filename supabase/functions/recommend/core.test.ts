@@ -43,6 +43,9 @@ assert.deepEqual(r.map((c) => c.place_id), [7, 3]);
 // 지역 고정에서는 역당 2곳 제한 없음 (같은 동네 4곳 모두)
 r = recommend({ members, stations, edges, places: [at(3, 'C', '한식'), at(7, 'C', '고기'), at(8, 'C', '중식'), at(9, 'C', '양식')], prefs: [], fixedStationId: 'C' });
 assert.equal(r.length, 4);
+// 반경을 넓히면 옆 역(B, 약 5.3km)까지 포함
+r = recommend({ members, stations, edges, places, prefs: [], fixedStationId: 'C', fixedRadiusKm: 6 });
+assert.ok(r.some((c) => c.place_id === 2));
 
 // 5) 자차 멤버는 더 짧은 쪽 사용
 const withCar = recommend({ members: [{ ...members[0], has_car: true }, members[1]], stations, edges, places, prefs: [] });
