@@ -72,7 +72,10 @@ export default function HomeScreen() {
                 autoCorrect={false}
                 maxLength={6}
                 accessibilityLabel="초대 코드"
-                style={[styles.input, { color: theme.text, borderColor: theme.textSecondary }]}
+                style={[
+                  styles.input,
+                  { color: theme.text, borderColor: theme.textSecondary, letterSpacing: code ? 4 : 0 },
+                ]}
               />
               <Button
                 title="참여"
@@ -121,7 +124,7 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.four, gap: Spacing.two },
   header: { gap: Spacing.three, marginBottom: Spacing.two },
   joinRow: { flexDirection: 'row', gap: Spacing.two },
-  input: { flex: 1, height: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 18, letterSpacing: 4 },
+  input: { flex: 1, height: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 18 },
   row: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 16, borderWidth: 1, borderRadius: 12,
