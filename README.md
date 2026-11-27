@@ -1,56 +1,86 @@
-# Welcome to your Expo app 👋
+# 어디서 만나? — 약속장소 추천 앱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+2~8명이 링크 하나로 모여 출발지·가능 날짜·선호를 입력하면, 수도권 안에서 **모두에게 공평한 약속 장소**와 날짜·시간대를 추천하고 **익명 투표**로 확정해 각자의 캘린더에 넣어 주는 iOS·Android 앱.
 
-## Get started
+> 1인 개발 · 2026년 11월~12월 · 진행 중 (1단계 완료)
 
-1. Install dependencies
+## 핵심 기능
 
-   ```bash
-   npm install
-   ```
+| 기능 | 내용 |
+| --- | --- |
+| 파티 참여 | 카카오 로그인 → 6자리 코드 또는 링크로 참여 (최대 8명) |
+| 수집 | 출발지 핀 + 자차 여부, 가능 날짜·시간대, **비공개** 선호·비선호 |
+| 추천 | 날짜·시간대 교집합 + 이동시간 기준 장소 후보 5곳 (자체 알고리즘) |
+| 투표 | 후보별 **익명** 1표 + 실시간 이모지 반응 |
+| 확정 | 기기 기본 캘린더(iOS EventKit · Android Calendar)에 일정 등록, 카카오맵 길찾기 |
+| 고정 모드 | 지역이 정해졌으면 그 지역 식당만, 장소까지 정해졌으면 날짜만 정함 |
 
-2. Start the app
+단계(수집 → 투표 → 확정)는 멤버 전원이 "완료"를 누르면 자동으로 넘어가며, 누가 완료했는지는 서로 보인다.
 
-   ```bash
-   npx expo start
-   ```
+## 기술 스택
 
-In the output, you'll find options to open the app in a
+- **앱**: React Native · Expo SDK 58 · Expo Router · TypeScript
+- **백엔드**: Supabase (Postgres, Row Level Security, Realtime, Edge Functions)
+- **인증**: Supabase Auth 카카오 OAuth (이메일 없이 닉네임·프로필 사진만)
+- **지도**: 카카오맵 JS SDK (WebView)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 설계에서 신경 쓴 부분
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### 1. 블라인드·익명은 화면이 아니라 DB가 강제한다
+앱에서 숨기기만 하면 API를 직접 호출해 볼 수 있다. 그래서 공개 범위를 전부 RLS와 `security definer` 함수로 막았다.
 
-## Get a fresh project
+| 데이터 | 다른 멤버에게 보이는 것 | 강제 방식 |
+| --- | --- | --- |
+| 선호·비선호 | 없음 | 본인 행만 조회. 추천 함수(서버 키)만 전원 것을 읽고 결과만 반환 |
+| 투표 | 전원 완료 후 득표수만 | 본인 표만 조회. `vote_counts()`가 마감 후 개수만 반환 |
+| 가능 날짜 | 날짜별 가능 인원수만 | `common_slots()`가 인원수만 반환 |
+| 완료 상태 | 공개 | 컬럼 단위 권한으로 직접 수정 금지, `set_done()`으로만 변경 |
 
-When you're ready, run:
+### 2. 공정성 우선 추천 알고리즘
+가장 멀리 사는 사람의 이동시간을 먼저 줄이고, 그다음 평균 이동시간과 선호·별점을 본다. 외부 길찾기 API 없이 지하철 그래프 위에서 직접 계산한다.
 
-```bash
-npm run reset-project
+```
+score = 0.6 · max(이동시간) + 0.4 · 평균(이동시간) − 5 · 선호 일치 수 − 3 · 평균 별점
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+- 멤버마다 다익스트라 1회 → 모든 후보역까지의 시간
+- 자차 멤버는 대중교통과 자차 추정 중 짧은 쪽
+- 한 명이라도 싫어하는 카테고리·지역은 제외 (후보가 모자라면 비선호가 적은 순)
+- 한 역에서 최대 2곳만 내서 후보가 한 동네에 몰리지 않게 함
 
-### Other setup steps
+구현: [`supabase/functions/recommend/core.ts`](supabase/functions/recommend/core.ts)
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## 프로젝트 구조
 
-## Learn more
+```
+src/
+  app/                  화면 (Expo Router)
+  components/           로그인 화면 등
+  lib/supabase.ts       Supabase 클라이언트
+supabase/
+  migrations/           스키마 · RLS · 함수
+  seed.sql              더미데이터 (역 30곳, 식당 150곳, 데모 파티 2개)
+  functions/recommend/  추천 Edge Function + 알고리즘
+  tests/                DB 규칙 검사 (PGlite로 계정 없이 실행)
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## 실행
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npm install
+npm test          # 추천 알고리즘 + DB 규칙(블라인드·익명 투표·단계 전환) 검사
+npx expo start    # Expo Go로 실행
+```
 
-## Join the community
+Supabase·카카오 설정은 [SETUP.md](SETUP.md) 참고.
 
-Join our community of developers creating universal apps.
+## 진행 상황
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [x] 1단계: 스키마·RLS·더미데이터, 추천 알고리즘, 카카오 로그인
+- [ ] 2단계: 파티 생성·참여, 출발지 핀 지도
+- [ ] 3단계: 날짜·선호 입력, 추천 결과 화면
+- [ ] 4단계: 익명 투표·이모지, 확정·캘린더·길찾기
+
+### 알려진 한계
+- 역 좌표·역간 소요시간은 근사 더미 데이터 (공공데이터포털 데이터로 교체 예정)
+- 이동시간은 실시간 교통정보가 아닌 추정치
