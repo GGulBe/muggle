@@ -7,10 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { isConfigured, supabase } from '@/lib/supabase';
+import { isConfigured, setSessionFromUrl, supabase } from '@/lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession(); // 웹에서만 필요
-const appUrl = makeRedirectUri(); // Expo Go: exp://<IP>:8081, 빌드: muggle://
+// Expo Go: exp://<IP>:8081/--/auth-callback, 빌드: muggle://auth-callback
+// 경로(/--/...) 없이 exp://<IP>:8081만 쓰면 Expo Go가 '프로젝트 열기'로 보고 앱에 전달하지 않는다
+const appUrl = makeRedirectUri({ path: 'auth-callback' });
 // 안드로이드 크롬은 리다이렉트만으로 앱을 여는 걸 막아서, 중간 페이지(docs/auth)를 거쳐
 // 사용자가 누른 동작으로 앱에 돌아온다. Supabase Redirect URLs에 이 주소 등록 필요
 const bridgeUrl = `https://ggulbe.github.io/muggle/auth/?to=${encodeURIComponent(appUrl)}`;
@@ -22,16 +24,9 @@ async function signInWithKakao() {
   });
   if (error) throw error;
   const res = await WebBrowser.openAuthSessionAsync(data.url ?? '', appUrl);
-  if (res.type !== 'success') return; // 사용자가 닫음
-  // 토큰은 redirect URL의 #fragment(또는 ?query)로 돌아온다
-  const params = Object.fromEntries(new URLSearchParams(res.url.split(/[?#]/).slice(1).join('&')));
-  if (params.error) throw new Error(params.error_description ?? params.error);
-  if (!params.access_token) throw new Error('로그인 응답에 토큰이 없습니다');
-  const { error: sessionError } = await supabase.auth.setSession({
-    access_token: params.access_token,
-    refresh_token: params.refresh_token,
-  });
-  if (sessionError) throw sessionError;
+  // 안드로이드에서는 결과가 여기 대신 딥링크(_layout의 Linking 리스너)로 올 수도 있다
+  if (res.type !== 'success') return;
+  if (!(await setSessionFromUrl(res.url))) throw new Error('로그인 응답에 토큰이 없습니다');
 }
 
 export function LoginScreen() {
