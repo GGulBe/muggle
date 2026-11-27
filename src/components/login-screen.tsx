@@ -13,20 +13,30 @@ WebBrowser.maybeCompleteAuthSession(); // 웹에서만 필요
 // Expo Go: exp://<IP>:<port>/--/auth-callback, 빌드: muggle://auth-callback
 // 경로(/--/...) 없이 exp://<IP>:<port>만 쓰면 Expo Go가 '프로젝트 열기'로 보고 앱에 전달하지 않는다
 const appUrl = Linking.createURL('auth-callback');
-// 안드로이드 크롬은 리다이렉트만으로 앱을 여는 걸 막아서, 중간 페이지(docs/auth)를 거쳐
-// 사용자가 누른 동작으로 앱에 돌아온다. Supabase Redirect URLs에 이 주소 등록 필요
-const bridgeUrl = `https://ggulbe.github.io/muggle/auth/?to=${encodeURIComponent(appUrl)}`;
 
+// 안드로이드 Custom Tab은 앱 주소로 돌아가는 링크를 막는다. 그래서 로그인 결과를 중간 페이지(docs/auth)가
+// 일회용 번호표에 맡기고, 사용자가 창을 닫으면 앱이 번호표로 찾아온다.
+// iOS는 중간 페이지가 앱 주소로 바로 돌려보낸다. (Supabase Redirect URLs에 중간 페이지 주소 등록 필요)
 async function signInWithKakao() {
+  const { data: ticket, error: ticketError } = await supabase.rpc('create_login_ticket');
+  if (ticketError) throw ticketError;
+  const bridgeUrl = `https://ggulbe.github.io/muggle/auth/?ticket=${ticket}&to=${encodeURIComponent(appUrl)}`;
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'kakao',
     options: { redirectTo: bridgeUrl, skipBrowserRedirect: true },
   });
   if (error) throw error;
   const res = await WebBrowser.openAuthSessionAsync(data.url ?? '', appUrl);
-  // 안드로이드에서는 결과가 여기 대신 딥링크(_layout의 Linking 리스너)로 올 수도 있다
-  if (res.type !== 'success') return;
-  if (!(await setSessionFromUrl(res.url))) throw new Error('로그인 응답에 토큰이 없습니다');
+  if (res.type === 'success' && (await setSessionFromUrl(res.url))) return;
+
+  // 창을 닫고 돌아온 경우: 맡겨 둔 토큰을 찾아온다 (없으면 로그인하지 않고 닫은 것)
+  const { data: rows, error: claimError } = await supabase.rpc('claim_login_ticket', { p_ticket: ticket });
+  if (claimError) throw claimError;
+  const tokens = rows?.[0];
+  if (!tokens) return;
+  const { error: sessionError } = await supabase.auth.setSession(tokens);
+  if (sessionError) throw sessionError;
 }
 
 export function LoginScreen() {

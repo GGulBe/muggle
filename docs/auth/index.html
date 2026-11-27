@@ -7,34 +7,55 @@
   <title>muggle 로그인</title>
   <style>
     body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center;
-           justify-content: center; gap: 16px; font-family: -apple-system, system-ui, sans-serif;
+           justify-content: center; gap: 12px; font-family: -apple-system, system-ui, sans-serif;
            background: #fff; color: #191919; padding: 16px; box-sizing: border-box; text-align: center; }
-    a { background: #FEE500; color: rgba(0,0,0,.85); padding: 14px 28px; border-radius: 12px;
-        text-decoration: none; font-weight: 600; }
+    strong { font-size: 20px; }
+    p { margin: 0; color: #60646C; line-height: 1.5; }
   </style>
 </head>
 <body>
-  <p id="msg">로그인됐어요. 앱으로 돌아갑니다.</p>
-  <a id="go" href="#">앱으로 돌아가기</a>
+  <strong id="title">로그인 처리 중…</strong>
+  <p id="msg"></p>
   <script>
-    // Supabase 로그인 후 여기로 온 토큰(#access_token=...)을 앱 주소로 넘긴다.
-    // 안드로이드 크롬은 사용자 동작 없는 앱 이동을 막으므로 버튼을 함께 둔다.
-    var to = new URLSearchParams(location.search).get('to') || '';
+    // Supabase 로그인 후 여기로 온다: ?ticket=<번호표>&to=<앱 주소>#access_token=...&refresh_token=...
+    // 1) 토큰을 번호표에 맡긴다 → 앱이 로그인 창을 닫은 뒤 찾아감 (안드로이드 Custom Tab은 앱 링크를 막음)
+    // 2) iOS 등은 앱 주소로 바로 돌아간다
+    var SUPABASE_URL = 'https://bagiymtghtkfplxlypkp.supabase.co';
+    var PUBLISHABLE_KEY = 'sb_publishable_h-N8VvbOScrHFRBm-9oDxQ_d-EjRRVN'; // 공개 키 (앱에도 들어가는 값)
+
+    var q = new URLSearchParams(location.search);
+    var h = new URLSearchParams(location.hash.slice(1));
+    history.replaceState(null, '', location.pathname); // 주소창에서 토큰 제거
+    var ticket = q.get('ticket'), to = q.get('to') || '';
+    var access = h.get('access_token'), refresh = h.get('refresh_token');
+    var title = document.getElementById('title'), msg = document.getElementById('msg');
+    var android = /Android/i.test(navigator.userAgent);
     // 토큰은 우리 앱 주소(muggle://, 개발 중 exp://)로만 전달
-    // ponytail: exp://는 개발용. 출시 빌드에서는 muggle://만 허용하도록 정규식을 좁힐 것
-    var m = /^(muggle|exp):\/\/([^#]*)$/.exec(to);
-    var go = document.getElementById('go');
-    if (m) {
-      var tokens = location.hash.slice(1);
-      // 안드로이드 Custom Tab은 exp:// 같은 앱 주소 링크를 무시해서, 크롬 전용 intent:// 형식으로 연다.
-      // intent://는 # 뒤를 설정으로 쓰므로 토큰은 ?query로 옮긴다 (앱은 query·fragment 둘 다 읽음)
-      go.href = /Android/i.test(navigator.userAgent)
-        ? 'intent://' + m[2] + (m[2].indexOf('?') === -1 ? '?' : '&') + tokens + '#Intent;scheme=' + m[1] + ';end'
-        : to + '#' + tokens;
-      location.replace(go.href);
+    // ponytail: exp://는 개발용. 출시 빌드에서는 muggle://만 허용하도록 좁힐 것
+    var appOk = /^(muggle|exp):\/\/[^#]*$/.test(to);
+
+    function done() {
+      title.textContent = '로그인됐어요';
+      msg.innerHTML = android ? '왼쪽 위 <b>X</b>를 눌러 앱으로 돌아가세요.' : '앱으로 돌아갑니다.';
+      if (!android && appOk) location.replace(to + '#' + h.toString());
+    }
+
+    if (!access || !ticket) {
+      title.textContent = '로그인하지 못했어요';
+      msg.textContent = h.get('error_description') || q.get('error_description') || '앱에서 다시 시도해 주세요.';
     } else {
-      document.getElementById('msg').textContent = '잘못된 접근입니다.';
-      go.style.display = 'none';
+      fetch(SUPABASE_URL + '/rest/v1/rpc/fulfill_login_ticket', {
+        method: 'POST',
+        headers: { apikey: PUBLISHABLE_KEY, Authorization: 'Bearer ' + access, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_ticket: ticket, p_access_token: access, p_refresh_token: refresh })
+      }).then(function (r) {
+        if (r.ok) return done();
+        title.textContent = '로그인하지 못했어요';
+        msg.textContent = '앱에서 다시 시도해 주세요. (' + r.status + ')';
+      }).catch(function () {
+        title.textContent = '네트워크 오류';
+        msg.textContent = '앱에서 다시 시도해 주세요.';
+      });
     }
   </script>
 </body>
