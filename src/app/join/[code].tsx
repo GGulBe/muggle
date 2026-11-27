@@ -25,7 +25,7 @@ export default function JoinScreen() {
       {error ? (
         <>
           <ThemedText style={styles.text}>{error}</ThemedText>
-          <Button title="홈으로" onPress={() => router.replace('/')} />
+          <Button title="홈으로" onPress={() => router.dismissTo('/')} />
         </>
       ) : (
         <ActivityIndicator />

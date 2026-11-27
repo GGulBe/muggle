@@ -100,6 +100,15 @@ for (const n of [1, 2, 3, 4, 5, 6, 7]) await as(n, 'select join_party($1)', [cre
 await db.exec(`insert into auth.users (id) values ('00000000-0000-0000-0000-000000000009')`);
 await fails(9, 'select join_party($1)', [created.code], /full/);
 
+// 나가기·삭제: 멤버는 나가기만, 방장은 나가기 불가·삭제만, 남의 파티 삭제 불가
+await as(7, 'select leave_party($1)', [created.id]);
+await as(9, 'select join_party($1)', [created.code]); // 빈자리에 참여 가능
+await fails(8, 'select leave_party($1)', [created.id], /host cannot leave/);
+await fails(1, 'select delete_party($1)', [created.id], /host only/);
+await fails(2, 'select leave_party($1)', [P1], /already started/); // P1은 위에서 투표 단계
+await as(8, 'select delete_party($1)', [created.id]);
+assert.equal(await count(`select count(*)::int n from party_members where party_id = '${created.id}'`), 0);
+
 console.log('sql check: ok');
 
 // 더미 DEMO01로 실제 추천 실행

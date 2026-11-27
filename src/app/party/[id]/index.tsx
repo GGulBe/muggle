@@ -1,6 +1,6 @@
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Share, StyleSheet, Switch, View } from 'react-native';
+import { Alert, FlatList, Pressable, Share, StyleSheet, Switch, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
@@ -68,6 +68,28 @@ export default function PartyScreen() {
     }
   };
 
+  const isHost = party?.host_id === me;
+  const removeOrLeave = () => {
+    const [title, body, rpc] = isHost
+      ? ['파티를 삭제할까요?', '모든 멤버의 입력과 투표가 함께 지워지고 되돌릴 수 없어요.', 'delete_party']
+      : ['파티에서 나갈까요?', '내 출발지·가능 날짜가 이 파티에서 지워져요.', 'leave_party'];
+    Alert.alert(title, body, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: isHost ? '삭제' : '나가기',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.rpc(rpc, { p: id });
+          if (error) {
+            const msg = error.message.includes('started') ? '투표가 시작된 뒤에는 나갈 수 없어요.' : error.message;
+            return Alert.alert(isHost ? '삭제하지 못했어요' : '나가지 못했어요', msg);
+          }
+          router.dismissTo('/');
+        },
+      },
+    ]);
+  };
+
   if (!party) return <ThemedView style={styles.container} />;
 
   return (
@@ -127,11 +149,20 @@ export default function PartyScreen() {
           </View>
         )}
         ListFooterComponent={
-          members.length < 2 ? (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-              2명 이상 모여야 추천을 받을 수 있어요. 초대 코드를 공유해 주세요.
-            </ThemedText>
-          ) : undefined
+          <View style={styles.footer}>
+            {members.length < 2 && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+                2명 이상 모여야 추천을 받을 수 있어요. 초대 코드를 공유해 주세요.
+              </ThemedText>
+            )}
+            {(isHost || party.status === 'gathering') && (
+              <Pressable accessibilityRole="button" onPress={removeOrLeave} style={styles.danger}>
+                <ThemedText type="small" style={{ color: '#d93025' }}>
+                  {isHost ? '파티 삭제' : '파티 나가기'}
+                </ThemedText>
+              </Pressable>
+            )}
+          </View>
         }
       />
     </ThemedView>
@@ -146,5 +177,7 @@ const styles = StyleSheet.create({
   code: { letterSpacing: 6 },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   member: { padding: 14, borderWidth: 1, borderRadius: 12, gap: 2 },
-  hint: { textAlign: 'center', marginTop: Spacing.three },
+  hint: { textAlign: 'center' },
+  footer: { gap: Spacing.three, marginTop: Spacing.three },
+  danger: { alignItems: 'center', padding: Spacing.three },
 });
