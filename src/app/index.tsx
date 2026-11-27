@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
@@ -80,16 +81,18 @@ export default function HomeScreen() {
             {parties.length > 0 && <ThemedText type="smallBold">내 파티</ThemedText>}
           </View>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push(`/party/${item.id}`)}
-            style={[styles.row, { borderColor: theme.backgroundSelected }]}>
-            <ThemedText>{item.code}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {STATUS_LABEL[item.status]}
-            </ThemedText>
-          </Pressable>
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 50).duration(300)} layout={LinearTransition}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push(`/party/${item.id}`)}
+              style={({ pressed }) => [styles.row, { borderColor: theme.backgroundSelected }, pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }]}>
+              <ThemedText>{item.code}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {STATUS_LABEL[item.status]}
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
         )}
         ListFooterComponent={
           <Pressable accessibilityRole="button" onPress={() => supabase.auth.signOut()} style={styles.logout}>

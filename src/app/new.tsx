@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, type ScrollViewInstance } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
@@ -11,12 +12,29 @@ import { supabase } from '@/lib/supabase';
 
 type Mode = 'none' | 'region' | 'place';
 type Station = { id: string; name: string };
-type Place = { id: number; name: string; category: string; stations: { name: string } | null };
+type Place = {
+  id: number;
+  name: string;
+  category: string;
+  stations: { name: string } | null;
+};
 
 const MODES: { mode: Mode; title: string; body: string }[] = [
-  { mode: 'none', title: '아직 몰라요', body: '모두의 출발지로 공평한 장소를 추천받아요' },
-  { mode: 'region', title: '동네는 정했어요', body: '그 동네 안에서 먹을 곳만 추천받아요' },
-  { mode: 'place', title: '장소까지 정했어요', body: '날짜·시간만 맞춰요 (투표 없음)' },
+  {
+    mode: 'none',
+    title: '아직 몰라요',
+    body: '모두의 출발지로 공평한 장소를 추천받아요',
+  },
+  {
+    mode: 'region',
+    title: '동네는 정했어요',
+    body: '그 동네 안에서 먹을 곳만 추천받아요',
+  },
+  {
+    mode: 'place',
+    title: '장소까지 정했어요',
+    body: '날짜·시간만 맞춰요 (투표 없음)',
+  },
 ];
 const RADII = [0.5, 1, 1.5, 2, 3, 5, 7, 10]; // km, DB 제약 0.3~10
 
@@ -79,19 +97,29 @@ export default function NewPartyScreen() {
     });
     setBusy(false);
     if (error) return Alert.alert('파티를 만들지 못했어요', error.message);
-    router.replace({ pathname: '/party/[id]', params: { id: data.id, welcome: 'created' } });
+    router.replace({
+      pathname: '/party/[id]',
+      params: { id: data.id, welcome: 'created' },
+    });
   };
 
   const chip = (selected: boolean) => [
     styles.chip,
-    { borderColor: selected ? '#208AEF' : theme.backgroundSelected, backgroundColor: selected ? '#208AEF22' : 'transparent' },
+    {
+      borderColor: selected ? '#208AEF' : theme.backgroundSelected,
+      backgroundColor: selected ? '#208AEF22' : 'transparent',
+    },
   ];
 
-  const picked = mode === 'region' ? station?.name : mode === 'place' && place ? `${place.name} · ${place.stations?.name ?? ''}` : null;
+  const picked =
+    mode === 'region' ? station?.name : mode === 'place' && place ? `${place.name} · ${place.stations?.name ?? ''}` : null;
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView ref={scroll} contentContainerStyle={[styles.content, typing && styles.typing]} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scroll}
+        contentContainerStyle={[styles.content, typing && styles.typing]}
+        keyboardShouldPersistTaps="handled">
         <ThemedText type="smallBold">어디서 만날지 정했나요?</ThemedText>
         {MODES.map((m) => (
           <Pressable
@@ -101,19 +129,23 @@ export default function NewPartyScreen() {
             onPress={() => pickMode(m.mode)}
             style={[styles.card, ...chip(mode === m.mode).slice(1)]}>
             <ThemedText>{m.title}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">{m.body}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {m.body}
+            </ThemedText>
           </Pressable>
         ))}
 
-        {mode !== 'none' && (
-          picked ? (
+        {mode !== 'none' &&
+          (picked ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`${picked} 선택 취소`}
               onPress={() => (mode === 'region' ? setStation(null) : setPlace(null))}
               style={[styles.card, ...chip(true).slice(1), styles.pickedRow]}>
-              <ThemedText>📍 {picked}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">바꾸기 ✕</ThemedText>
+              <ThemedText>{picked}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                바꾸기 ✕
+              </ThemedText>
             </Pressable>
           ) : (
             <>
@@ -127,39 +159,62 @@ export default function NewPartyScreen() {
                 onLayout={(e) => (inputY.current = e.nativeEvent.layout.y)}
                 onFocus={() => {
                   setTyping(true);
-                  setTimeout(() => scroll.current?.scrollTo({ y: inputY.current - Spacing.three }), 100);
+                  setTimeout(
+                    () =>
+                      scroll.current?.scrollTo({
+                        y: inputY.current - Spacing.three,
+                      }),
+                    100,
+                  );
                 }}
                 onBlur={() => setTyping(false)}
                 accessibilityLabel={mode === 'region' ? '동네 검색' : '장소 검색'}
                 style={[styles.input, { color: theme.text, borderColor: theme.textSecondary }]}
               />
-              {mode === 'region' && stations.map((s) => (
-                <Pressable key={s.id} accessibilityRole="button" onPress={() => setStation(s)}
-                  style={[styles.row, { borderColor: theme.backgroundSelected }]}>
-                  <ThemedText>{s.name}</ThemedText>
-                </Pressable>
-              ))}
-              {mode === 'place' && places.map((p) => (
-                <Pressable key={p.id} accessibilityRole="button" onPress={() => setPlace(p)}
-                  style={[styles.row, { borderColor: theme.backgroundSelected }]}>
-                  <ThemedText>{p.name}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{p.category} · {p.stations?.name}</ThemedText>
-                </Pressable>
-              ))}
+              {mode === 'region' &&
+                stations.map((s) => (
+                  <Animated.View key={s.id} entering={FadeIn.duration(200)}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setStation(s)}
+                      style={[styles.row, { borderColor: theme.backgroundSelected }]}>
+                      <ThemedText>{s.name}</ThemedText>
+                    </Pressable>
+                  </Animated.View>
+                ))}
+              {mode === 'place' &&
+                places.map((p) => (
+                  <Animated.View key={p.id} entering={FadeIn.duration(200)}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setPlace(p)}
+                      style={[styles.row, { borderColor: theme.backgroundSelected }]}>
+                      <ThemedText>{p.name}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {p.category} · {p.stations?.name}
+                      </ThemedText>
+                    </Pressable>
+                  </Animated.View>
+                ))}
               {query.trim() !== '' && (mode === 'region' ? stations : places).length === 0 && (
-                <ThemedText type="small" themeColor="textSecondary">검색 결과가 없어요</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  검색 결과가 없어요
+                </ThemedText>
               )}
             </>
-          )
-        )}
+          ))}
 
         {mode === 'region' && (
           <>
             <ThemedText type="smallBold">범위 · 반경 {radius}km</ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
               {RADII.map((r) => (
-                <Pressable key={r} accessibilityRole="radio" accessibilityState={{ selected: radius === r }}
-                  onPress={() => setRadius(r)} style={chip(radius === r)}>
+                <Pressable
+                  key={r}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: radius === r }}
+                  onPress={() => setRadius(r)}
+                  style={chip(radius === r)}>
                   <ThemedText type="small">{r}km</ThemedText>
                 </Pressable>
               ))}
@@ -178,9 +233,24 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.four, gap: Spacing.three },
   typing: { paddingBottom: 600 },
   card: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 2 },
-  pickedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  input: { height: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 16 },
+  pickedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  input: {
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 16,
+  },
   row: { borderBottomWidth: 1, paddingVertical: 12, gap: 2 },
   chips: { gap: Spacing.two },
-  chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  chip: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
 });

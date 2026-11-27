@@ -2,14 +2,16 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { useCallback, useEffect, useState } from 'react';
 import * as Calendar from 'expo-calendar/legacy';
 import { Alert, FlatList, Linking, Pressable, Share, StyleSheet, Switch, View } from 'react-native';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 
 import { Button } from '@/components/button';
+import { ReactionBar } from '@/components/reaction-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
-  EMOJIS, formatDay, inviteUrl, MAX_MEMBERS, PARTY_DETAIL_SELECT, SLOT_LABEL, SLOT_TIME, STATUS_LABEL,
+  formatDay, inviteUrl, MAX_MEMBERS, PARTY_DETAIL_SELECT, SLOT_LABEL, SLOT_TIME, STATUS_LABEL,
   type Candidate, type Member, type PartyDetail, type Reaction,
 } from '@/lib/party';
 import { supabase } from '@/lib/supabase';
@@ -30,7 +32,7 @@ export default function PartyScreen() {
   const [busy, setBusy] = useState<'done' | 'recommend' | 'vote' | null>(null);
 
   const loadReactions = useCallback(async (round: number) => {
-    const { data } = await supabase.from('reactions').select('place_id, emoji, user_id').eq('party_id', id).eq('round', round);
+    const { data } = await supabase.from('reactions').select('place_id, emoji, user_id').eq('party_id', id).eq('round', round).order('created_at');
     setReactions((data as Reaction[] | null) ?? []);
   }, [id]);
 
@@ -276,22 +278,22 @@ export default function PartyScreen() {
             </View>
 
             {welcome && gathering && (
-              <View style={[styles.card, { backgroundColor: '#208AEF22' }]}>
-                <ThemedText type="smallBold">{welcome === 'created' ? '🎉 파티를 만들었어요' : '👋 파티에 참여했어요'}</ThemedText>
+              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: '#208AEF22' }]}>
+                <ThemedText type="smallBold">{welcome === 'created' ? '파티를 만들었어요' : '파티에 참여했어요'}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {welcome === 'created' ? '초대하기로 친구들에게 코드를 보내 주세요.' : '출발지와 가능한 날짜를 입력해 주세요.'}
                 </ThemedText>
-              </View>
+              </Animated.View>
             )}
 
             {/* 확정 */}
             {party.status === 'closed' && (
-              <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-                <ThemedText type="smallBold">🎉 약속이 정해졌어요</ThemedText>
-                {when && <ThemedText>📅 {when}</ThemedText>}
+              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+                <ThemedText type="smallBold">약속이 정해졌어요</ThemedText>
+                {when && <ThemedText type="subtitle" style={styles.when}>{when}</ThemedText>}
                 {party.final_place && (
                   <ThemedText>
-                    📍 {party.final_place.name}
+                    {party.final_place.name}
                     <ThemedText type="small" themeColor="textSecondary"> · {party.final_place.category} · {party.final_place.stations?.name}</ThemedText>
                   </ThemedText>
                 )}
@@ -311,14 +313,14 @@ export default function PartyScreen() {
                     </Pressable>
                   </View>
                 )}
-              </View>
+              </Animated.View>
             )}
 
             {/* 투표 (후보) */}
             {!gathering && candidates.length > 0 && (
-              <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
                 <ThemedText type="smallBold">{voting ? '어디로 갈까요? (익명 투표)' : '투표 결과'}</ThemedText>
-                {voting && when && <ThemedText>📅 {when}</ThemedText>}
+                {voting && when && <ThemedText>{when}</ThemedText>}
                 {voting && (
                   <ThemedText type="small" themeColor="textSecondary">
                     {mine?.vote_done ? '투표를 마쳤어요. 모두 마치면 결과가 나와요.' : '한 곳을 눌러 투표하세요. 누가 어디에 투표했는지는 아무도 몰라요.'}
@@ -328,15 +330,19 @@ export default function PartyScreen() {
                   const picked = myVote === c.place_id;
                   const won = party.status === 'closed' && c.place_id === party.final_place_id;
                   return (
-                    <View key={c.place_id} style={[styles.candidate, { borderColor: picked ? '#208AEF' : theme.backgroundSelected, borderWidth: picked ? 2 : 1 }]}>
+                    <Animated.View
+                      key={c.place_id}
+                      entering={FadeInDown.delay(i * 60).duration(300)}
+                      layout={LinearTransition}
+                      style={[styles.candidate, { borderColor: picked ? '#208AEF' : theme.backgroundSelected, borderWidth: picked ? 2 : 1 }]}>
                       <Pressable
                         accessibilityRole="radio"
                         accessibilityState={{ selected: picked, disabled: !canVote }}
                         disabled={!canVote}
                         onPress={() => vote(c.place_id)}
-                        style={styles.candidateMain}>
+                        style={({ pressed }) => [styles.candidateMain, pressed && styles.pressed]}>
                         <View style={styles.flex}>
-                          <ThemedText>{i + 1}. {c.places?.name}{won ? ' 👑' : ''}</ThemedText>
+                          <ThemedText>{i + 1}. {c.places?.name}{won ? <ThemedText type="smallBold" style={styles.badge}>  확정</ThemedText> : null}</ThemedText>
                           <ThemedText type="small" themeColor="textSecondary">
                             {c.places?.category} · {c.places?.stations?.name}
                             {party.fixed_mode === 'none' ? ` · 최대 ${Math.round(c.max_min)}분 · 평균 ${Math.round(c.avg_min)}분` : ''}
@@ -345,26 +351,17 @@ export default function PartyScreen() {
                         {counts ? (
                           <ThemedText type="smallBold">{counts.get(c.place_id) ?? 0}표</ThemedText>
                         ) : picked ? (
-                          <ThemedText type="smallBold" style={{ color: '#208AEF' }}>내 표</ThemedText>
+                          <Animated.View entering={FadeInDown.duration(200)}>
+                            <ThemedText type="smallBold" style={styles.badge}>내 표</ThemedText>
+                          </Animated.View>
                         ) : null}
                       </Pressable>
-                      <View style={styles.emojis}>
-                        {EMOJIS.map((e) => {
-                          const n = reactions.filter((x) => x.place_id === c.place_id && x.emoji === e).length;
-                          const on = reactions.some((x) => x.place_id === c.place_id && x.emoji === e && x.user_id === me);
-                          return (
-                            <Pressable
-                              key={e}
-                              accessibilityRole="button"
-                              accessibilityLabel={`${e} 반응 ${n}개${on ? ', 내가 누름' : ''}`}
-                              onPress={() => react(c.place_id, e)}
-                              style={[styles.emoji, { borderColor: on ? '#208AEF' : theme.backgroundSelected, backgroundColor: on ? '#208AEF22' : 'transparent' }]}>
-                              <ThemedText type="small">{e}{n ? ` ${n}` : ''}</ThemedText>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    </View>
+                      <ReactionBar
+                        reactions={reactions.filter((x) => x.place_id === c.place_id)}
+                        me={me}
+                        onToggle={(e) => react(c.place_id, e)}
+                      />
+                    </Animated.View>
                   );
                 })}
                 {voting && mine && (
@@ -376,11 +373,11 @@ export default function PartyScreen() {
                     busy={busy === 'vote'}
                   />
                 )}
-              </View>
+              </Animated.View>
             )}
 
             {gathering && mine && (
-              <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+              <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
                 <ThemedText type="smallBold">내 입력</ThemedText>
                 {step('출발지', mine.lat != null ? address || '설정됨' : '정하기', mine.lat != null, () =>
                   router.push({ pathname: '/party/[id]/pin', params: { id, code: party.code, lat: mine.lat ?? '', lng: mine.lng ?? '' } }))}
@@ -400,7 +397,7 @@ export default function PartyScreen() {
                 {allDone && (
                   <Button title="추천 받기" onPress={recommend} busy={busy === 'recommend'} />
                 )}
-              </View>
+              </Animated.View>
             )}
 
             <ThemedText type="smallBold">
@@ -453,8 +450,9 @@ const styles = StyleSheet.create({
   stepValue: { flexShrink: 1, marginLeft: Spacing.three, textAlign: 'right' },
   candidate: { borderRadius: 12, padding: 12, gap: Spacing.two },
   candidateMain: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  emojis: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  emoji: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 2 },
+  pressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
+  badge: { color: '#208AEF' },
+  when: { fontSize: 22, lineHeight: 30 },
   row: { flexDirection: 'row', gap: Spacing.two, justifyContent: 'center' },
   flex: { flex: 1 },
   link: { padding: Spacing.two },

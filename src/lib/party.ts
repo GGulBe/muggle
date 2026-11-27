@@ -39,8 +39,13 @@ export type Candidate = {
 // 캘린더 등록용 시간대 (시작 시각, 길이 분)
 export const SLOT_TIME: Record<Slot, [number, number, number]> = { breakfast: [9, 0, 90], lunch: [12, 0, 90], dinner: [18, 30, 120] };
 
-// 카카오톡처럼 기본 이모지로 반응 (iOS·Android 공통)
-export const EMOJIS = ['❤️', '👍', '😋', '🤔', '😢'];
+// 입력에서 첫 이모지 하나만 꺼낸다 (기본 이모지, iOS·Android 공통). 글자·숫자·공백이면 null
+// DB도 같은 규칙을 검사한다 (reactions.emoji check)
+const EMOJI = /^(?:\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F)?(?:\u200D\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F)?)*)/u;
+export const firstEmoji = (text: string): string | null => {
+  const m = EMOJI.exec(text.trim());
+  return m && !/[\p{L}\p{N}\s]/u.test(m[0]) ? m[0] : null;
+};
 export type Reaction = { place_id: number; emoji: string; user_id: string };
 
 export const SLOTS: Slot[] = ['breakfast', 'lunch', 'dinner'];

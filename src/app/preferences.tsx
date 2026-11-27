@@ -84,7 +84,7 @@ export default function PreferencesScreen() {
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={[styles.notice, { backgroundColor: theme.backgroundElement }]}>
-          <ThemedText type="smallBold">🔒 나만 볼 수 있어요</ThemedText>
+          <ThemedText type="smallBold">나만 볼 수 있어요</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             누구에게도 공개되지 않고, 추천 계산에만 쓰여요. 한 번 누르면 좋아요, 두 번 누르면 싫어요예요. 싫어요를 고른 곳은 추천에서 빠져요.
           </ThemedText>
