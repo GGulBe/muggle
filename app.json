@@ -32,6 +32,13 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "약속을 캘린더에 추가할 때 사용해요.",
+          "remindersPermission": "약속 알림을 추가할 때 사용해요."
+        }
       ]
     ],
     "experiments": {

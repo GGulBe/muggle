@@ -1,6 +1,7 @@
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, Share, StyleSheet, Switch, View } from 'react-native';
+import * as Calendar from 'expo-calendar/legacy';
+import { Alert, FlatList, Linking, Pressable, Share, StyleSheet, Switch, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
@@ -8,8 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
-  formatDay, inviteUrl, MAX_MEMBERS, PARTY_DETAIL_SELECT, SLOT_LABEL, STATUS_LABEL,
-  type Candidate, type Member, type PartyDetail,
+  EMOJIS, formatDay, inviteUrl, MAX_MEMBERS, PARTY_DETAIL_SELECT, SLOT_LABEL, SLOT_TIME, STATUS_LABEL,
+  type Candidate, type Member, type PartyDetail, type Reaction,
 } from '@/lib/party';
 import { supabase } from '@/lib/supabase';
 
@@ -23,7 +24,15 @@ export default function PartyScreen() {
   const [myDates, setMyDates] = useState(0);
   const [myPrefs, setMyPrefs] = useState(0);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [busy, setBusy] = useState<'done' | 'recommend' | null>(null);
+  const [myVote, setMyVote] = useState<number | null>(null);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [counts, setCounts] = useState<Map<number, number> | null>(null); // 확정 후에만 (개수만, 누가 뭘 골랐는지는 없음)
+  const [busy, setBusy] = useState<'done' | 'recommend' | 'vote' | null>(null);
+
+  const loadReactions = useCallback(async (round: number) => {
+    const { data } = await supabase.from('reactions').select('place_id, emoji, user_id').eq('party_id', id).eq('round', round);
+    setReactions((data as Reaction[] | null) ?? []);
+  }, [id]);
 
   const load = useCallback(async () => {
     const [{ data: p }, { data: m }, { data: u }, dates, prefs] = await Promise.all([
@@ -51,8 +60,16 @@ export default function PartyScreen() {
         .eq('round', detail.round)
         .order('score');
       setCandidates((c as Candidate[] | null) ?? []);
+      // RLS: votes는 내 표만 보인다
+      const { data: v } = await supabase.from('votes').select('place_id').eq('party_id', id).eq('round', detail.round).maybeSingle();
+      setMyVote(v?.place_id ?? null);
+      loadReactions(detail.round);
+      if (detail.status === 'closed' && detail.fixed_mode !== 'place') {
+        const { data: n } = await supabase.rpc('vote_counts', { p: id });
+        setCounts(new Map(((n as { place_id: number; n: number }[] | null) ?? []).map((x) => [x.place_id, x.n])));
+      } else setCounts(null);
     }
-  }, [id]);
+  }, [id, loadReactions]);
 
   // 입력 화면에서 돌아오면 다시 불러오고, 다른 멤버의 변화는 실시간으로 받는다
   useFocusEffect(
@@ -65,17 +82,24 @@ export default function PartyScreen() {
       .channel(`party:${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'party_members', filter: `party_id=eq.${id}` }, load)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'parties', filter: `id=eq.${id}` }, load)
+      // 이모지: 삭제 이벤트는 필터가 안 돼서 전체를 받고 이 파티 것만 거른다 (삭제 이벤트엔 키만 담김)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, (e) => {
+        const row = (e.new && 'party_id' in e.new ? e.new : e.old) as Partial<Reaction & { party_id: string; round: number }>;
+        if (row.party_id === id && row.round != null) loadReactions(row.round);
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [id, load]);
+  }, [id, load, loadReactions]);
 
   const mine = members.find((m) => m.user_id === me);
   const isHost = party?.host_id === me;
   const gathering = party?.status === 'gathering';
   const editable = gathering && mine && !mine.input_done;
   const allDone = members.length >= 2 && members.every((m) => m.input_done);
+  const voting = party?.status === 'voting';
+  const canVote = voting && mine && !mine.vote_done;
 
   const recommend = async () => {
     setBusy('recommend');
@@ -98,6 +122,83 @@ export default function PartyScreen() {
     // 마지막으로 완료한 사람이 추천을 실행한다 (실패하면 누구나 '추천 받기'로 다시 실행)
     if (data === 'ready') return recommend();
     load();
+  };
+
+  // 투표: 한 사람 한 표, 투표 완료 전까지 바꿀 수 있음 (다른 사람에게는 보이지 않음)
+  const vote = async (placeId: number) => {
+    if (!canVote || !party || placeId === myVote) return;
+    const before = myVote;
+    setMyVote(placeId);
+    const { error } = before == null
+      ? await supabase.from('votes').insert({ party_id: id, round: party.round, place_id: placeId })
+      : await supabase.from('votes').update({ place_id: placeId }).eq('party_id', id).eq('round', party.round).eq('user_id', me!);
+    if (error) {
+      setMyVote(before);
+      Alert.alert('투표하지 못했어요', error.message);
+    }
+  };
+
+  const toggleVoteDone = async () => {
+    setBusy('vote');
+    const { error } = await supabase.rpc('set_done', { p: id, p_done: !mine?.vote_done });
+    setBusy(null);
+    if (error) return Alert.alert('완료하지 못했어요', error.message.includes('vote first') ? '먼저 한 곳에 투표해 주세요.' : error.message);
+    load();
+  };
+
+  // 이모지 반응: 실시간 공개, 누가 눌렀는지는 숫자로만 보여준다
+  const react = async (placeId: number, emoji: string) => {
+    if (!party) return;
+    const mineOn = reactions.some((x) => x.place_id === placeId && x.emoji === emoji && x.user_id === me);
+    setReactions((list) => mineOn
+      ? list.filter((x) => !(x.place_id === placeId && x.emoji === emoji && x.user_id === me))
+      : [...list, { place_id: placeId, emoji, user_id: me! }]);
+    const { error } = mineOn
+      ? await supabase.from('reactions').delete().match({ party_id: id, round: party.round, place_id: placeId, emoji, user_id: me })
+      : await supabase.from('reactions').insert({ party_id: id, round: party.round, place_id: placeId, emoji });
+    if (error) loadReactions(party.round);
+  };
+
+  const restart = (to: 'voting' | 'gathering') => {
+    const [title, body] = to === 'voting'
+      ? ['다시 투표할까요?', '같은 후보로 모두 다시 투표해요.']
+      : ['처음부터 다시 정할까요?', '출발지·날짜를 다시 입력하고 새로 추천받아요.'];
+    Alert.alert(title, body, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '다시 하기',
+        onPress: async () => {
+          const { error } = await supabase.rpc('restart_party', { p: id, p_to: to });
+          if (error) return Alert.alert('바꾸지 못했어요', error.message);
+          load();
+        },
+      },
+    ]);
+  };
+
+  // 휴대폰 기본 캘린더의 '일정 추가' 화면을 채워서 연다 (사용자가 저장)
+  const addToCalendar = async () => {
+    if (!party?.final_date || !party.final_slot) return;
+    const [y, m, d] = party.final_date.split('-').map(Number);
+    const [h, min, len] = SLOT_TIME[party.final_slot];
+    const startDate = new Date(y, m - 1, d, h, min);
+    try {
+      await Calendar.createEventInCalendarAsync({
+        title: `muggle 약속${party.final_place ? ` · ${party.final_place.name}` : ''}`,
+        startDate,
+        endDate: new Date(startDate.getTime() + len * 60_000),
+        location: party.final_place?.name,
+        notes: `파티 ${party.code}`,
+      });
+    } catch (e) {
+      Alert.alert('캘린더를 열지 못했어요', e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  // 카카오맵 길찾기 (앱이 있으면 앱, 없으면 웹)
+  const directions = () => {
+    const p = party?.final_place;
+    if (p) Linking.openURL(`https://map.kakao.com/link/to/${encodeURIComponent(p.name)},${p.lat},${p.lng}`);
   };
 
   const share = () => {
@@ -183,21 +284,98 @@ export default function PartyScreen() {
               </View>
             )}
 
-            {/* 추천 결과 (투표는 4단계) */}
-            {!gathering && (
+            {/* 확정 */}
+            {party.status === 'closed' && (
               <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-                <ThemedText type="smallBold">{party.status === 'closed' ? '확정됐어요' : '추천 장소'}</ThemedText>
+                <ThemedText type="smallBold">🎉 약속이 정해졌어요</ThemedText>
                 {when && <ThemedText>📅 {when}</ThemedText>}
-                {party.final_place && <ThemedText>📍 {party.final_place.name}</ThemedText>}
-                {party.status === 'voting' && candidates.map((c, i) => (
-                  <View key={c.place_id} style={[styles.candidate, { borderColor: theme.backgroundSelected }]}>
-                    <ThemedText>{i + 1}. {c.places?.name}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {c.places?.category} · {c.places?.stations?.name}
-                      {party.fixed_mode === 'none' ? ` · 최대 ${Math.round(c.max_min)}분 · 평균 ${Math.round(c.avg_min)}분` : ''}
-                    </ThemedText>
+                {party.final_place && (
+                  <ThemedText>
+                    📍 {party.final_place.name}
+                    <ThemedText type="small" themeColor="textSecondary"> · {party.final_place.category} · {party.final_place.stations?.name}</ThemedText>
+                  </ThemedText>
+                )}
+                <View style={styles.row}>
+                  <Button title="캘린더에 추가" variant="secondary" onPress={addToCalendar} style={styles.flex} />
+                  {party.final_place && <Button title="길찾기" variant="secondary" onPress={directions} style={styles.flex} />}
+                </View>
+                {isHost && (
+                  <View style={styles.row}>
+                    {party.fixed_mode !== 'place' && (
+                      <Pressable accessibilityRole="button" onPress={() => restart('voting')} style={styles.link}>
+                        <ThemedText type="small" themeColor="textSecondary">다시 투표</ThemedText>
+                      </Pressable>
+                    )}
+                    <Pressable accessibilityRole="button" onPress={() => restart('gathering')} style={styles.link}>
+                      <ThemedText type="small" themeColor="textSecondary">처음부터 다시</ThemedText>
+                    </Pressable>
                   </View>
-                ))}
+                )}
+              </View>
+            )}
+
+            {/* 투표 (후보) */}
+            {!gathering && candidates.length > 0 && (
+              <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+                <ThemedText type="smallBold">{voting ? '어디로 갈까요? (익명 투표)' : '투표 결과'}</ThemedText>
+                {voting && when && <ThemedText>📅 {when}</ThemedText>}
+                {voting && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {mine?.vote_done ? '투표를 마쳤어요. 모두 마치면 결과가 나와요.' : '한 곳을 눌러 투표하세요. 누가 어디에 투표했는지는 아무도 몰라요.'}
+                  </ThemedText>
+                )}
+                {candidates.map((c, i) => {
+                  const picked = myVote === c.place_id;
+                  const won = party.status === 'closed' && c.place_id === party.final_place_id;
+                  return (
+                    <View key={c.place_id} style={[styles.candidate, { borderColor: picked ? '#208AEF' : theme.backgroundSelected, borderWidth: picked ? 2 : 1 }]}>
+                      <Pressable
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: picked, disabled: !canVote }}
+                        disabled={!canVote}
+                        onPress={() => vote(c.place_id)}
+                        style={styles.candidateMain}>
+                        <View style={styles.flex}>
+                          <ThemedText>{i + 1}. {c.places?.name}{won ? ' 👑' : ''}</ThemedText>
+                          <ThemedText type="small" themeColor="textSecondary">
+                            {c.places?.category} · {c.places?.stations?.name}
+                            {party.fixed_mode === 'none' ? ` · 최대 ${Math.round(c.max_min)}분 · 평균 ${Math.round(c.avg_min)}분` : ''}
+                          </ThemedText>
+                        </View>
+                        {counts ? (
+                          <ThemedText type="smallBold">{counts.get(c.place_id) ?? 0}표</ThemedText>
+                        ) : picked ? (
+                          <ThemedText type="smallBold" style={{ color: '#208AEF' }}>내 표</ThemedText>
+                        ) : null}
+                      </Pressable>
+                      <View style={styles.emojis}>
+                        {EMOJIS.map((e) => {
+                          const n = reactions.filter((x) => x.place_id === c.place_id && x.emoji === e).length;
+                          const on = reactions.some((x) => x.place_id === c.place_id && x.emoji === e && x.user_id === me);
+                          return (
+                            <Pressable
+                              key={e}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${e} 반응 ${n}개${on ? ', 내가 누름' : ''}`}
+                              onPress={() => react(c.place_id, e)}
+                              style={[styles.emoji, { borderColor: on ? '#208AEF' : theme.backgroundSelected, backgroundColor: on ? '#208AEF22' : 'transparent' }]}>
+                              <ThemedText type="small">{e}{n ? ` ${n}` : ''}</ThemedText>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  );
+                })}
+                {voting && mine && (
+                  <Button
+                    title={mine.vote_done ? '투표 완료 취소' : '투표 완료'}
+                    variant={mine.vote_done ? 'secondary' : 'primary'}
+                    onPress={toggleVoteDone}
+                    disabled={!mine.vote_done && myVote == null}
+                    busy={busy === 'vote'}
+                  />
+                )}
               </View>
             )}
 
@@ -228,6 +406,7 @@ export default function PartyScreen() {
             <ThemedText type="smallBold">
               멤버 {members.length}/{MAX_MEMBERS}
               {gathering ? ` · 입력 완료 ${members.filter((m) => m.input_done).length}명` : ''}
+              {voting ? ` · 투표 완료 ${members.filter((m) => m.vote_done).length}명` : ''}
             </ThemedText>
           </View>
         }
@@ -239,7 +418,7 @@ export default function PartyScreen() {
               {item.user_id === party.host_id ? ' · 방장' : ''}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {[item.lat != null ? '출발지 ✓' : '출발지 –', item.has_car ? '자차' : null, item.input_done ? '입력 완료 ✓' : '입력 중']
+              {[item.lat != null ? '출발지 ✓' : '출발지 –', item.has_car ? '자차' : null, gathering ? (item.input_done ? '입력 완료 ✓' : '입력 중') : voting ? (item.vote_done ? '투표 완료 ✓' : '투표 중') : null]
                 .filter(Boolean)
                 .join(' · ')}
             </ThemedText>
@@ -272,7 +451,13 @@ const styles = StyleSheet.create({
   code: { letterSpacing: 6 },
   step: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 14 },
   stepValue: { flexShrink: 1, marginLeft: Spacing.three, textAlign: 'right' },
-  candidate: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 2 },
+  candidate: { borderRadius: 12, padding: 12, gap: Spacing.two },
+  candidateMain: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  emojis: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  emoji: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 2 },
+  row: { flexDirection: 'row', gap: Spacing.two, justifyContent: 'center' },
+  flex: { flex: 1 },
+  link: { padding: Spacing.two },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   member: { padding: 14, borderWidth: 1, borderRadius: 12, gap: 2 },
   hint: { textAlign: 'center' },

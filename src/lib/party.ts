@@ -17,15 +17,16 @@ export type PartyDetail = Party & {
   fixed_radius_km: number;
   final_date: string | null;
   final_slot: Slot | null;
+  final_place_id: number | null;
   fixed_station: { name: string } | null;
   fixed_place: { name: string } | null;
-  final_place: { name: string } | null;
+  final_place: { name: string; lat: number; lng: number; category: string; stations: { name: string } | null } | null;
 };
 
 export const PARTY_DETAIL_SELECT =
-  'id, code, host_id, status, created_at, round, fixed_mode, fixed_radius_km, final_date, final_slot,' +
+  'id, code, host_id, status, created_at, round, fixed_mode, fixed_radius_km, final_date, final_slot, final_place_id,' +
   ' fixed_station:stations!fixed_station_id(name), fixed_place:places!fixed_place_id(name),' +
-  ' final_place:places!final_place_id(name)';
+  ' final_place:places!final_place_id(name, lat, lng, category, stations(name))';
 
 export type Candidate = {
   place_id: number;
@@ -34,6 +35,13 @@ export type Candidate = {
   avg_min: number;
   places: { name: string; category: string; stations: { name: string } | null } | null;
 };
+
+// 캘린더 등록용 시간대 (시작 시각, 길이 분)
+export const SLOT_TIME: Record<Slot, [number, number, number]> = { breakfast: [9, 0, 90], lunch: [12, 0, 90], dinner: [18, 30, 120] };
+
+// 카카오톡처럼 기본 이모지로 반응 (iOS·Android 공통)
+export const EMOJIS = ['❤️', '👍', '😋', '🤔', '😢'];
+export type Reaction = { place_id: number; emoji: string; user_id: string };
 
 export const SLOTS: Slot[] = ['breakfast', 'lunch', 'dinner'];
 export const SLOT_LABEL: Record<Slot, string> = { breakfast: '아침', lunch: '점심', dinner: '저녁' };
