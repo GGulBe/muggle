@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,7 +27,7 @@ const monthCells = (y: number, m: number) => {
 };
 
 export default function DatesScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, code } = useLocalSearchParams<{ id: string; code?: string }>(); // 파티 화면이 보낸 값
   const theme = useTheme();
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const [saving, setSaving] = useState(false);
@@ -87,6 +87,7 @@ export default function DatesScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {code && <Stack.Screen options={{ title: `가능한 날짜 · ${code}` }} />}
       <ScrollView contentContainerStyle={styles.content}>
         <ThemedText type="small" themeColor="textSecondary">
           날짜를 누르고 아래에서 가능한 시간대를 골라 주세요. 다른 사람에게는 내 선택이 보이지 않아요.

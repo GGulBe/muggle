@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,9 +16,9 @@ type Pin = { lat: number; lng: number; address: string };
 type MapMessage = ({ type: 'pin' } & Pin) | { type: 'ready' } | { type: 'error'; message: string };
 
 export default function PinScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // 파티 화면이 보낸 값: 파티 id·code, 내 현재 출발지(lat/lng, 없으면 빈 문자열)
+  const { id, code, lat, lng } = useLocalSearchParams<{ id: string; code?: string; lat?: string; lng?: string }>();
   const web = useRef<WebView<object>>(null); // <object>: 라이브러리 타입의 기본값(undefined)이 TS 6에서 props를 never로 만든다
-  const [start, setStart] = useState<{ lat: number | null; lng: number | null } | null>(null);
   const [others, setOthers] = useState<{ lat: number; lng: number; name: string }[]>([]);
   const [pin, setPin] = useState<Pin | null>(null);
   const [saving, setSaving] = useState(false);
@@ -32,8 +32,6 @@ export default function PinScreen() {
         .select('user_id, lat, lng, profiles(nickname)')
         .eq('party_id', id);
       const rows = (data as Pick<Member, 'user_id' | 'lat' | 'lng' | 'profiles'>[] | null) ?? [];
-      const mine = rows.find((m) => m.user_id === u.user?.id);
-      setStart({ lat: mine?.lat ?? null, lng: mine?.lng ?? null });
       setOthers(
         rows
           .filter((m) => m.user_id !== u.user?.id && m.lat != null && m.lng != null)
@@ -75,7 +73,8 @@ export default function PinScreen() {
       .eq('user_id', u.user!.id);
     setSaving(false);
     if (error) return Alert.alert('저장하지 못했어요', error.message);
-    router.back();
+    // 고른 주소를 파티 화면으로 돌려준다 (스택에 있는 파티 화면으로 돌아가며 파라미터 갱신)
+    router.dismissTo({ pathname: '/party/[id]', params: { id, address: pin.address } });
   };
 
   if (!process.env.EXPO_PUBLIC_KAKAO_JS_KEY) {
@@ -85,13 +84,12 @@ export default function PinScreen() {
       </ThemedView>
     );
   }
-  if (!start) return <ThemedView style={styles.center}><ActivityIndicator /></ThemedView>;
-
   return (
     <ThemedView style={styles.container}>
+      {code && <Stack.Screen options={{ title: `출발지 설정 · ${code}` }} />}
       <WebView<object>
         ref={web}
-        source={{ uri: mapPageUrl(start.lat, start.lng) }}
+        source={{ uri: mapPageUrl(lat ? Number(lat) : null, lng ? Number(lng) : null) }}
         onMessage={onMessage}
         style={styles.map}
         startInLoadingState

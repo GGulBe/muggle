@@ -79,7 +79,7 @@ export default function NewPartyScreen() {
     });
     setBusy(false);
     if (error) return Alert.alert('파티를 만들지 못했어요', error.message);
-    router.replace(`/party/${data.id}`);
+    router.replace({ pathname: '/party/[id]', params: { id: data.id, welcome: 'created' } });
   };
 
   const chip = (selected: boolean) => [

@@ -40,7 +40,7 @@ export default function HomeScreen() {
     setBusy(null);
     if (error) return Alert.alert('참여하지 못했어요', joinError(error.message));
     setCode('');
-    router.push(`/party/${data}`);
+    router.push({ pathname: '/party/[id]', params: { id: data, welcome: 'joined' } });
   };
 
   return (

@@ -14,7 +14,8 @@ import {
 import { supabase } from '@/lib/supabase';
 
 export default function PartyScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // 화면 간 전달 값: id(필수), welcome(새 파티·참여 화면이 보냄), address(출발지 화면이 돌려줌)
+  const { id, welcome, address } = useLocalSearchParams<{ id: string; welcome?: 'created' | 'joined'; address?: string }>();
   const theme = useTheme();
   const [party, setParty] = useState<PartyDetail | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -152,7 +153,7 @@ export default function PartyScreen() {
       disabled={!editable}
       style={[styles.step, { borderColor: theme.backgroundSelected, opacity: editable ? 1 : 0.6 }]}>
       <ThemedText>{ok ? '✓ ' : '○ '}{label}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">{value} ›</ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.stepValue}>{value} ›</ThemedText>
     </Pressable>
   );
 
@@ -172,6 +173,15 @@ export default function PartyScreen() {
               <ThemedText type="subtitle" style={styles.code} selectable>{party.code}</ThemedText>
               {gathering && <Button title="초대하기" variant="secondary" onPress={share} />}
             </View>
+
+            {welcome && gathering && (
+              <View style={[styles.card, { backgroundColor: '#208AEF22' }]}>
+                <ThemedText type="smallBold">{welcome === 'created' ? '🎉 파티를 만들었어요' : '👋 파티에 참여했어요'}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {welcome === 'created' ? '초대하기로 친구들에게 코드를 보내 주세요.' : '출발지와 가능한 날짜를 입력해 주세요.'}
+                </ThemedText>
+              </View>
+            )}
 
             {/* 추천 결과 (투표는 4단계) */}
             {!gathering && (
@@ -194,8 +204,10 @@ export default function PartyScreen() {
             {gathering && mine && (
               <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
                 <ThemedText type="smallBold">내 입력</ThemedText>
-                {step('출발지', mine.lat != null ? '설정됨' : '정하기', mine.lat != null, () => router.push(`/party/${id}/pin`))}
-                {step('가능한 날짜', myDates ? `${myDates}개` : '고르기', myDates > 0, () => router.push(`/party/${id}/dates`))}
+                {step('출발지', mine.lat != null ? address || '설정됨' : '정하기', mine.lat != null, () =>
+                  router.push({ pathname: '/party/[id]/pin', params: { id, code: party.code, lat: mine.lat ?? '', lng: mine.lng ?? '' } }))}
+                {step('가능한 날짜', myDates ? `${myDates}개` : '고르기', myDates > 0, () =>
+                  router.push({ pathname: '/party/[id]/dates', params: { id, code: party.code } }))}
                 {step('내 취향 (비공개)', myPrefs ? `${myPrefs}개` : '선택', myPrefs > 0, () => router.push('/preferences'))}
                 <View style={styles.switchRow}>
                   <ThemedText>자차로 이동해요</ThemedText>
@@ -259,6 +271,7 @@ const styles = StyleSheet.create({
   card: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
   code: { letterSpacing: 6 },
   step: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 14 },
+  stepValue: { flexShrink: 1, marginLeft: Spacing.three, textAlign: 'right' },
   candidate: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 2 },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   member: { padding: 14, borderWidth: 1, borderRadius: 12, gap: 2 },
