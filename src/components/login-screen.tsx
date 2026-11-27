@@ -1,4 +1,4 @@
-import { makeRedirectUri } from 'expo-auth-session';
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
@@ -10,9 +10,9 @@ import { Spacing } from '@/constants/theme';
 import { isConfigured, setSessionFromUrl, supabase } from '@/lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession(); // 웹에서만 필요
-// Expo Go: exp://<IP>:8081/--/auth-callback, 빌드: muggle://auth-callback
-// 경로(/--/...) 없이 exp://<IP>:8081만 쓰면 Expo Go가 '프로젝트 열기'로 보고 앱에 전달하지 않는다
-const appUrl = makeRedirectUri({ path: 'auth-callback' });
+// Expo Go: exp://<IP>:<port>/--/auth-callback, 빌드: muggle://auth-callback
+// 경로(/--/...) 없이 exp://<IP>:<port>만 쓰면 Expo Go가 '프로젝트 열기'로 보고 앱에 전달하지 않는다
+const appUrl = Linking.createURL('auth-callback');
 // 안드로이드 크롬은 리다이렉트만으로 앱을 여는 걸 막아서, 중간 페이지(docs/auth)를 거쳐
 // 사용자가 누른 동작으로 앱에 돌아온다. Supabase Redirect URLs에 이 주소 등록 필요
 const bridgeUrl = `https://ggulbe.github.io/muggle/auth/?to=${encodeURIComponent(appUrl)}`;
