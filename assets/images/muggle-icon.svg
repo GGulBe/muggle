@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#208AEF"/>
+  <!-- 약속 장소 핀 + 가운데로 모이는 세 사람(점) -->
+  <path d="M256 430 C200 350 136 296 136 224 A120 120 0 1 1 376 224 C376 296 312 350 256 430 Z" fill="#FFFFFF"/>
+  <circle cx="256" cy="224" r="22" fill="#208AEF"/>
+  <circle cx="256" cy="166" r="14" fill="#208AEF" opacity="0.55"/>
+  <circle cx="306" cy="253" r="14" fill="#208AEF" opacity="0.55"/>
+  <circle cx="206" cy="253" r="14" fill="#208AEF" opacity="0.55"/>
+</svg>

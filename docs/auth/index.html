@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>muggle 로그인</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+           justify-content: center; gap: 16px; font-family: -apple-system, system-ui, sans-serif;
+           background: #fff; color: #191919; padding: 16px; box-sizing: border-box; text-align: center; }
+    a { background: #FEE500; color: rgba(0,0,0,.85); padding: 14px 28px; border-radius: 12px;
+        text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <p id="msg">로그인됐어요. 앱으로 돌아갑니다.</p>
+  <a id="go" href="#">앱으로 돌아가기</a>
+  <script>
+    // Supabase 로그인 후 여기로 온 토큰(#access_token=...)을 앱 주소로 넘긴다.
+    // 안드로이드 크롬은 사용자 동작 없는 앱 이동을 막으므로 버튼을 함께 둔다.
+    var to = new URLSearchParams(location.search).get('to') || '';
+    // 토큰은 우리 앱 주소(muggle://, 개발 중 exp://)로만 전달
+    // ponytail: exp://는 개발용. 출시 빌드에서는 muggle://만 허용하도록 정규식을 좁힐 것
+    var ok = /^(muggle|exp):\/\//.test(to) && to.indexOf('#') === -1;
+    var go = document.getElementById('go');
+    if (ok) {
+      go.href = to + location.hash;
+      location.replace(go.href);
+    } else {
+      document.getElementById('msg').textContent = '잘못된 접근입니다.';
+      go.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

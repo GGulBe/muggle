@@ -10,15 +10,18 @@ import { Spacing } from '@/constants/theme';
 import { isConfigured, supabase } from '@/lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession(); // 웹에서만 필요
-const redirectTo = makeRedirectUri(); // Expo Go: exp://<IP>:8081 → Supabase Redirect URLs에 exp://** 등록 필요
+const appUrl = makeRedirectUri(); // Expo Go: exp://<IP>:8081, 빌드: muggle://
+// 안드로이드 크롬은 리다이렉트만으로 앱을 여는 걸 막아서, 중간 페이지(docs/auth)를 거쳐
+// 사용자가 누른 동작으로 앱에 돌아온다. Supabase Redirect URLs에 이 주소 등록 필요
+const bridgeUrl = `https://ggulbe.github.io/muggle/auth/?to=${encodeURIComponent(appUrl)}`;
 
 async function signInWithKakao() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'kakao',
-    options: { redirectTo, skipBrowserRedirect: true },
+    options: { redirectTo: bridgeUrl, skipBrowserRedirect: true },
   });
   if (error) throw error;
-  const res = await WebBrowser.openAuthSessionAsync(data.url ?? '', redirectTo);
+  const res = await WebBrowser.openAuthSessionAsync(data.url ?? '', appUrl);
   if (res.type !== 'success') return; // 사용자가 닫음
   // 토큰은 redirect URL의 #fragment(또는 ?query)로 돌아온다
   const params = Object.fromEntries(new URLSearchParams(res.url.split(/[?#]/).slice(1).join('&')));
