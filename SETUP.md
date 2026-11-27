@@ -7,9 +7,11 @@
 2. DB 비밀번호는 따로 저장해 둔다.
 
 ## 2. 스키마와 더미데이터 넣기
-Dashboard > SQL Editor에서 아래 두 파일 내용을 **순서대로** 붙여넣고 Run.
-1. `supabase/migrations/20261127000000_init.sql`
+Dashboard > SQL Editor에서 아래 파일을 **이름 순서대로 하나씩** 붙여넣고 Run (편집창을 비우고 한 번만 붙여넣기).
+1. `supabase/migrations/` 안의 파일 전부 (날짜 이름 순)
 2. `supabase/seed.sql`
+
+macOS에서는 `pbcopy < supabase/seed.sql`처럼 클립보드로 복사하면 편하다.
 
 확인: Table Editor에서 stations 30, places 150, parties 2(DEMO01, DEMO02)가 보이면 성공.
 
@@ -40,6 +42,7 @@ npx supabase functions deploy recommend
 3. Authentication > URL Configuration > Redirect URLs에 추가
    - `exp://**` (Expo Go 개발용)
    - `muggle://**` (빌드한 앱용, app.json의 scheme)
+   - `https://ggulbe.github.io/muggle/**` (로그인 중간 페이지, `docs/auth/index.html`, GitHub Pages)
 
 ## 5. 앱 실행
 ```bash
@@ -47,6 +50,10 @@ cp .env.local.example .env.local   # Project Settings > API의 URL과 publishabl
 npx expo start                     # iPhone/Android의 Expo Go로 QR 스캔
 ```
 "카카오로 시작하기" → 카카오 로그인 → "<닉네임>님, 안녕하세요"가 나오면 1단계 완료.
+
+안드로이드는 로그인 후 "로그인됐어요" 페이지에서 왼쪽 위 **X**를 눌러 창을 닫아야 앱이 로그인 결과를 가져온다
+(Custom Tab이 앱 주소로 돌아가는 링크를 막기 때문에, 로그인 결과를 일회용 번호표로 전달한다).
+Expo Go에서는 X를 누르면 Expo Go 홈으로 갈 수 있는데, 목록에서 muggle을 누르면 로그인된 상태로 돌아온다.
 
 ## 검사
 ```bash
@@ -57,5 +64,6 @@ npm test   # 추천 알고리즘 + DB 규칙(블라인드·익명 투표·완료
 | 증상 | 원인 |
 | --- | --- |
 | 카카오 화면에 KOE205 | 이메일 동의항목 미설정. 4-6 진행 |
-| 로그인 후 앱으로 안 돌아옴 | Redirect URLs에 `exp://**` 누락 |
+| 로그인 후 앱으로 안 돌아옴 | 안드로이드는 X로 창을 닫아야 함. 그래도 안 되면 Redirect URLs에 GitHub Pages 주소 누락 |
+| 로그인은 되는데 데이터가 안 보임 (permission denied) | `20261127030000_grants.sql` 미적용. 새 Supabase 프로젝트는 테이블 권한을 기본으로 주지 않음 |
 | "로그인 응답에 토큰이 없습니다" | Supabase Kakao Client Secret 오타 또는 비활성화 |

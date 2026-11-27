@@ -1,6 +1,6 @@
 // Supabase 흉내(auth 스키마, 역할, 기본 권한) 위에서 migration + seed + 흐름 검증
 import { PGlite } from '@electric-sql/pglite';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
 const root = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
@@ -14,12 +14,13 @@ await db.exec(`
   create role anon; create role authenticated;
   grant usage on schema public, auth to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated;
-  alter default privileges in schema public grant all on sequences to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
+  -- 최근 Supabase처럼 새 테이블·함수에 기본 권한을 주지 않는다 (마이그레이션이 직접 grant 해야 통과)
+  alter default privileges in schema public revoke execute on functions from public;
   create publication supabase_realtime;
 `);
-await db.exec(readFileSync(`${root}/supabase/migrations/20261127000000_init.sql`, 'utf8'));
+for (const f of readdirSync(`${root}/supabase/migrations`).sort()) {
+  await db.exec(readFileSync(`${root}/supabase/migrations/${f}`, 'utf8'));
+}
 await db.exec(readFileSync(`${root}/supabase/seed.sql`, 'utf8'));
 
 const P1 = '10000000-0000-0000-0000-000000000001';
