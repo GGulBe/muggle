@@ -41,6 +41,7 @@ export default function RootLayout() {
           <Stack.Screen name="party/[id]/pin" options={{ title: '출발지 설정' }} />
           <Stack.Screen name="party/[id]/dates" options={{ title: '가능한 날짜' }} />
           <Stack.Screen name="party/[id]/review" options={{ title: '후기' }} />
+          <Stack.Screen name="party/[id]/place" options={{ title: '가게 정보' }} />
           <Stack.Screen name="new" options={{ title: '새 파티' }} />
           <Stack.Screen name="preferences" options={{ title: '내 취향' }} />
           <Stack.Screen name="join/[code]" options={{ title: '파티 참여' }} />

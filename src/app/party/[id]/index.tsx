@@ -6,6 +6,7 @@ import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 
 import { Button } from '@/components/button';
 import { ReactionBar } from '@/components/reaction-bar';
+import { Roulette } from '@/components/roulette';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -26,9 +27,10 @@ export default function PartyScreen() {
   const [myDates, setMyDates] = useState(0);
   const [myPrefs, setMyPrefs] = useState(0);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [myVote, setMyVote] = useState<number | null>(null);
+  const [myVotes, setMyVotes] = useState<Set<number>>(new Set()); // 여러 곳에 투표 가능
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [counts, setCounts] = useState<Map<number, number> | null>(null); // 확정 후에만 (개수만, 누가 뭘 골랐는지는 없음)
+  const [revealed, setRevealed] = useState<string | null>(null); // 룰렛이 멈춘 결과 (멈추기 전엔 결과를 숨김)
   const [placeReviews, setPlaceReviews] = useState<{ n: number; avg: number; mine: boolean } | null>(null);
   const [busy, setBusy] = useState<'done' | 'recommend' | 'vote' | null>(null);
 
@@ -64,8 +66,8 @@ export default function PartyScreen() {
         .order('score');
       setCandidates((c as Candidate[] | null) ?? []);
       // RLS: votes는 내 표만 보인다
-      const { data: v } = await supabase.from('votes').select('place_id').eq('party_id', id).eq('round', detail.round).maybeSingle();
-      setMyVote(v?.place_id ?? null);
+      const { data: v } = await supabase.from('votes').select('place_id').eq('party_id', id).eq('round', detail.round);
+      setMyVotes(new Set((v ?? []).map((x) => x.place_id)));
       loadReactions(detail.round);
       // 확정 장소의 후기 요약 (앱 사용자 전체)
       if (detail.status === 'closed' && detail.final_place_id) {
@@ -112,6 +114,12 @@ export default function PartyScreen() {
   const editable = gathering && mine && !mine.input_done;
   const allDone = members.length >= 2 && members.every((m) => m.input_done);
   const voting = party?.status === 'voting';
+  // 최다 득표 동점 후보 (2곳 이상이면 룰렛)
+  const top = counts ? Math.max(0, ...counts.values()) : 0;
+  const tied = counts ? candidates.filter((c) => (counts.get(c.place_id) ?? 0) === top) : [];
+  const spinKey = party ? `${id}:${party.round}:${party.final_place_id}` : '';
+  // 투표로 확정됐는데 득표수를 아직 못 불러왔거나, 동점 룰렛이 아직 도는 중이면 결과를 가린다
+  const hideResult = party?.status === 'closed' && party.fixed_mode !== 'place' && (!counts || (tied.length > 1 && revealed !== spinKey));
   const canVote = voting && mine && !mine.vote_done;
 
   const recommend = async () => {
@@ -137,18 +145,31 @@ export default function PartyScreen() {
     load();
   };
 
-  // 투표: 한 사람 한 표, 투표 완료 전까지 바꿀 수 있음 (다른 사람에게는 보이지 않음)
+  // 투표: 가고 싶은 곳 모두 (후보마다 한 표), 투표 완료 전까지 바꿀 수 있음. 다른 사람에게는 보이지 않음
   const vote = async (placeId: number) => {
-    if (!canVote || !party || placeId === myVote) return;
-    const before = myVote;
-    setMyVote(placeId);
-    const { error } = before == null
-      ? await supabase.from('votes').insert({ party_id: id, round: party.round, place_id: placeId })
-      : await supabase.from('votes').update({ place_id: placeId }).eq('party_id', id).eq('round', party.round).eq('user_id', me!);
+    if (!canVote || !party) return;
+    const on = myVotes.has(placeId);
+    const flip = (prev: Set<number>) => {
+      const next = new Set(prev);
+      if (on) next.delete(placeId);
+      else next.add(placeId);
+      return next;
+    };
+    setMyVotes(flip);
+    const { error } = on
+      ? await supabase.from('votes').delete().match({ party_id: id, round: party.round, place_id: placeId }) // RLS: 내 표만
+      : await supabase.from('votes').insert({ party_id: id, round: party.round, place_id: placeId });
     if (error) {
-      setMyVote(before);
+      setMyVotes(flip);
       Alert.alert('투표하지 못했어요', error.message);
     }
+  };
+
+  // 동점 룰렛 다시 돌리기 (방장)
+  const respin = async () => {
+    const { error } = await supabase.rpc('respin', { p: id });
+    if (error) Alert.alert('다시 돌리지 못했어요', error.message);
+    load();
   };
 
   const toggleVoteDone = async () => {
@@ -300,15 +321,26 @@ export default function PartyScreen() {
             {/* 확정 */}
             {party.status === 'closed' && (
               <Animated.View entering={FadeInDown.duration(300)} layout={LinearTransition} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-                <ThemedText type="smallBold">약속이 정해졌어요</ThemedText>
+                <ThemedText type="smallBold">{tied.length > 1 ? `${tied.length}곳이 동점이라 룰렛으로 정했어요` : '약속이 정해졌어요'}</ThemedText>
+                {tied.length > 1 && party.final_place_id && (
+                  <>
+                    <Roulette
+                      items={tied.map((c) => ({ id: c.place_id, label: c.places?.name ?? '' }))}
+                      winner={party.final_place_id}
+                      playKey={spinKey}
+                      onDone={setRevealed}
+                    />
+                    {isHost && !hideResult && <Button title="마음에 안 들면 다시 돌리기" variant="secondary" onPress={respin} />}
+                  </>
+                )}
                 {when && <ThemedText type="subtitle" style={styles.when}>{when}</ThemedText>}
-                {party.final_place && (
+                {!hideResult && party.final_place && (
                   <ThemedText>
                     {party.final_place.name}
                     <ThemedText type="small" themeColor="textSecondary"> · {party.final_place.category} · {party.final_place.stations?.name}</ThemedText>
                   </ThemedText>
                 )}
-                {placeReviews && placeReviews.n > 0 && (
+                {!hideResult && placeReviews && placeReviews.n > 0 && (
                   <ThemedText type="small" themeColor="textSecondary">
                     <ThemedText type="small" style={styles.gold}>★</ThemedText> {placeReviews.avg.toFixed(1)} · 후기 {placeReviews.n}개
                   </ThemedText>
@@ -349,12 +381,12 @@ export default function PartyScreen() {
                 {voting && when && <ThemedText>{when}</ThemedText>}
                 {voting && (
                   <ThemedText type="small" themeColor="textSecondary">
-                    {mine?.vote_done ? '투표를 마쳤어요. 모두 마치면 결과가 나와요.' : '한 곳을 눌러 투표하세요. 누가 어디에 투표했는지는 아무도 몰라요.'}
+                    {mine?.vote_done ? '투표를 마쳤어요. 모두 마치면 결과가 나와요.' : '가고 싶은 곳에 모두 투표하세요 (여러 곳 가능). 가게를 누르면 정보를 볼 수 있어요. 누가 어디에 투표했는지는 아무도 몰라요.'}
                   </ThemedText>
                 )}
                 {candidates.map((c, i) => {
-                  const picked = myVote === c.place_id;
-                  const won = party.status === 'closed' && c.place_id === party.final_place_id;
+                  const picked = myVotes.has(c.place_id);
+                  const won = party.status === 'closed' && !hideResult && c.place_id === party.final_place_id;
                   return (
                     <Animated.View
                       key={c.place_id}
@@ -362,10 +394,15 @@ export default function PartyScreen() {
                       layout={LinearTransition}
                       style={[styles.candidate, { borderColor: picked ? '#208AEF' : theme.backgroundSelected, borderWidth: picked ? 2 : 1 }]}>
                       <Pressable
-                        accessibilityRole="radio"
-                        accessibilityState={{ selected: picked, disabled: !canVote }}
-                        disabled={!canVote}
-                        onPress={() => vote(c.place_id)}
+                        accessibilityRole="button"
+                        accessibilityHint="가게 정보 보기"
+                        onPress={() => router.push({
+                          pathname: '/party/[id]/place',
+                          params: {
+                            id, place: c.place_id, round: party.round, canVote: canVote ? '1' : '',
+                            ...(party.fixed_mode === 'none' ? { max: Math.round(c.max_min), avg: Math.round(c.avg_min) } : {}),
+                          },
+                        })}
                         style={({ pressed }) => [styles.candidateMain, pressed && styles.pressed]}>
                         <View style={styles.flex}>
                           <ThemedText>{i + 1}. {c.places?.name}{won ? <ThemedText type="smallBold" style={styles.badge}>  확정</ThemedText> : null}</ThemedText>
@@ -376,10 +413,17 @@ export default function PartyScreen() {
                         </View>
                         {counts ? (
                           <ThemedText type="smallBold">{counts.get(c.place_id) ?? 0}표</ThemedText>
-                        ) : picked ? (
-                          <Animated.View entering={FadeInDown.duration(200)}>
-                            <ThemedText type="smallBold" style={styles.badge}>내 표</ThemedText>
-                          </Animated.View>
+                        ) : voting ? (
+                          <Pressable
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: picked, disabled: !canVote }}
+                            accessibilityLabel={`${c.places?.name} 투표`}
+                            disabled={!canVote}
+                            hitSlop={8}
+                            onPress={() => vote(c.place_id)}
+                            style={({ pressed }) => [styles.voteBtn, picked && styles.voteOn, pressed && styles.pressed, !canVote && !picked && styles.dim]}>
+                            <ThemedText type="smallBold" style={{ color: picked ? '#fff' : '#208AEF' }}>{picked ? '✓ 투표함' : '투표'}</ThemedText>
+                          </Pressable>
                         ) : null}
                       </Pressable>
                       <ReactionBar
@@ -395,7 +439,7 @@ export default function PartyScreen() {
                     title={mine.vote_done ? '투표 완료 취소' : '투표 완료'}
                     variant={mine.vote_done ? 'secondary' : 'primary'}
                     onPress={toggleVoteDone}
-                    disabled={!mine.vote_done && myVote == null}
+                    disabled={!mine.vote_done && myVotes.size === 0}
                     busy={busy === 'vote'}
                   />
                 )}
@@ -478,6 +522,9 @@ const styles = StyleSheet.create({
   candidateMain: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   pressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
   badge: { color: '#208AEF' },
+  voteBtn: { borderWidth: 1.5, borderColor: '#208AEF', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  voteOn: { backgroundColor: '#208AEF' },
+  dim: { opacity: 0.4 },
   gold: { color: '#F5B301' },
   when: { fontSize: 22, lineHeight: 30 },
   row: { flexDirection: 'row', gap: Spacing.two, justifyContent: 'center' },

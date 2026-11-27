@@ -69,6 +69,11 @@ await fails(1, 'select set_done($1, true)', [P1], /vote first/);
 for (const n of [1, 2, 3]) await as(n, 'insert into votes (party_id, round, place_id) values ($1, 1, 2)', [P1]);
 await as(4, 'insert into votes (party_id, round, place_id) values ($1, 1, 1)', [P1]);
 assert.equal((await as(1, 'select * from votes')).length, 1); // 본인 표만
+// 1인 여러 표: 후보마다 한 표씩
+await as(2, 'insert into votes (party_id, round, place_id) values ($1, 1, 1)', [P1]);
+assert.equal((await as(2, 'select * from votes')).length, 2);
+await fails(2, 'insert into votes (party_id, round, place_id) values ($1, 1, 1)', [P1], /duplicate|unique/);
+await as(2, 'delete from votes where user_id = auth.uid() and place_id = 1');
 await fails(1, 'select * from vote_counts($1)', [P1], /voting not finished/);
 // 이모지: 기본 이모지만
 await as(2, `insert into reactions (party_id, round, place_id, emoji) values ($1, 1, 1, '👍')`, [P1]);
@@ -83,8 +88,16 @@ await as(3, 'select set_done($1, true)', [P1]);
 assert.equal((await as(4, 'select set_done($1, true) s', [P1]))[0].s, 'closed');
 const counts = await as(2, 'select * from vote_counts($1) order by place_id', [P1]);
 assert.deepEqual(counts.map((r) => r.n), [2, 2]);
-// 동점 → 점수 낮은(=1) 장소
-assert.equal((await db.query('select final_place_id from parties where id = $1', [P1])).rows[0].final_place_id, 1);
+// 동점 → 동점 후보 중 무작위
+const finalOf = async () => (await db.query('select final_place_id from parties where id = $1', [P1])).rows[0].final_place_id;
+const first = await finalOf();
+assert.ok([1, 2].includes(first));
+// 다시 돌리기: 방장만, 지금 결과가 아닌 동점 후보로
+await fails(2, 'select respin($1)', [P1], /host only/);
+await as(1, 'select respin($1)', [P1]);
+assert.equal(await finalOf(), 3 - first);
+if ((await finalOf()) !== 1) await as(1, 'select respin($1)', [P1]); // 아래 후기 검사는 1번 장소 기준
+assert.equal(await finalOf(), 1);
 
 // 후기: 확정 장소에만, 멤버만, 파티당 1개
 await as(2, `insert into reviews (place_id, party_id, rating, menu) values (1, $1, 5, '삼겹살, 냉면')`, [P1]);
