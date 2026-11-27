@@ -28,7 +28,11 @@ npx supabase functions deploy recommend
    - 카카오 로그인 Redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`
    - 카카오 로그인 Client Secret 코드 복사, **활성화**
 4. 제품 설정 > 카카오 로그인 > 일반: 상태 **ON**
-5. 제품 설정 > 카카오 로그인 > 동의항목: **닉네임**, **프로필 사진**만 설정 (이메일은 비즈앱 전용이라 안 씀)
+5. 제품 설정 > 카카오 로그인 > 동의항목: **닉네임**, **프로필 사진** 설정
+6. **이메일 동의항목 (필수 작업)**: Supabase가 `account_email`을 항상 요청하므로, 없으면 카카오가 KOE205(invalid_scope)를 낸다.
+   1. 우측 상단 프로필 > 계정 설정 > **본인인증** 완료
+   2. 앱 > 일반 > 비즈니스 정보 > **개인 개발자 비즈 앱** 전환 (사업자등록번호 불필요, 카카오비즈니스 통합 서비스 약관 동의)
+   3. 카카오 로그인 > 동의항목 > 개인정보 탭 > **카카오계정(이메일)** 설정 > **선택 동의** 저장
 
 **Supabase Dashboard**
 1. Authentication > Sign In / Providers > Kakao: Enabled, Client ID·Client Secret 입력
@@ -52,6 +56,6 @@ npm test   # 추천 알고리즘 + DB 규칙(블라인드·익명 투표·완료
 ## 막히면
 | 증상 | 원인 |
 | --- | --- |
-| 카카오 화면에 KOE205 | 동의항목에 없는 scope 요청. 4-5와 Allow users without an email 확인 |
+| 카카오 화면에 KOE205 | 이메일 동의항목 미설정. 4-6 진행 |
 | 로그인 후 앱으로 안 돌아옴 | Redirect URLs에 `exp://**` 누락 |
 | "로그인 응답에 토큰이 없습니다" | Supabase Kakao Client Secret 오타 또는 비활성화 |
